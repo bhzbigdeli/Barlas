@@ -20,7 +20,12 @@ public sealed record OrderPlanning(Guid OrderId, string ExternalNumber, SalesOrd
 
 public sealed record NewPlanLine(Guid ShoeModelId, Guid ColorId, int Size, int OrderQuantity, int SurplusQuantity);
 
-public sealed record CreatePlanRequest(Guid SalesOrderId, IReadOnlyList<NewPlanLine> Lines);
+public sealed record CreatePlanRequest(Guid SalesOrderId, IReadOnlyList<NewPlanLine> Lines,
+    DateOnly? PlannedStartDate = null, DateOnly? PlannedEndDate = null);
+
+public sealed record StageDateDto(Guid StageId, DateOnly PlannedDate);
+
+public sealed record ScheduleRequest(DateOnly PlannedStartDate, DateOnly PlannedEndDate, IReadOnlyList<StageDateDto>? Stages);
 
 public sealed record ReleaseRequest(int MaxPairsPerBundle);
 
@@ -49,7 +54,7 @@ public sealed record FreeStockRow(string UnitName, string ModelCode, string Mode
 /// <summary>
 /// مسیر سفارش در کارخانه: زیربرنامه (مدیر فنی) ← تأیید مازاد ← صدور دسته‌ها ← … ← ورود به انبار ← ارسال.
 /// </summary>
-public class PlanningService(IAppDbContext db, ICurrentUser user, IClock clock)
+public partial class PlanningService(IAppDbContext db, ICurrentUser user, IClock clock)
 {
     // ---------- برنامه‌ریزی سفارش ----------
 
@@ -106,8 +111,15 @@ public class PlanningService(IAppDbContext db, ICurrentUser user, IClock clock)
         }
 
         if (plan.Lines.Count == 0) throw new AppException("زیربرنامه خالی است.");
-        plan.Submit(unit.SurplusApprovalThreshold);
-        if (order.Status == SalesOrderStatus.Received) order.MarkPlanned();
+        plan.Submit(unit.SurplusApprovalThreshold, clock.UtcNow);
+
+        // زمان‌بندی پیش‌بینی‌شده: پیش‌فرض از امروز تا موعد سفارش (یا دو هفته)، پخش یکنواخت روی مراحل.
+        var today = DateOnly.FromDateTime(clock.UtcNow);
+        var start = request.PlannedStartDate ?? today;
+        var end = request.PlannedEndDate ?? (order.DueDate is { } due && due > start ? due : start.AddDays(14));
+        var stageIds = await OrderedStagesAsync(plan.Lines.Select(l => l.ShoeModelId).Distinct().ToList(), ct);
+        plan.SetSchedule(start, end, ProductionPlan.DistributeStageDates(start, end, stageIds));
+        if (order.Status == SalesOrderStatus.Received) order.MarkPlanned(clock.UtcNow);
 
         db.Plans.Add(plan);
         await db.SaveChangesAsync(ct);
@@ -134,17 +146,43 @@ public class PlanningService(IAppDbContext db, ICurrentUser user, IClock clock)
         var routes = await db.Routes.Include(r => r.Steps).Where(r => routeByModel.Values.Contains(r.Id)).ToDictionaryAsync(r => r.Id, ct);
 
         var bundles = BundleSplitter.Split(plan, request.MaxPairsPerBundle,
-            modelId => routes[routeByModel[modelId]].Steps.Select(s => s.StageId).ToList());
+            modelId => routes[routeByModel[modelId]].Steps.Select(s => s.StageId).ToList(), clock.UtcNow);
         db.Bundles.AddRange(bundles);
 
         if (plan.SalesOrderId is { } orderId)
         {
             var order = await db.SalesOrders.FirstAsync(o => o.Id == orderId, ct);
-            if (order.Status == SalesOrderStatus.Planned) order.MarkInProduction();
+            if (order.Status == SalesOrderStatus.Planned) order.MarkInProduction(clock.UtcNow);
         }
 
         await db.SaveChangesAsync(ct);
         return await GetPlanAsync(planId, ct);
+    }
+
+    /// <summary>تغییر تاریخ‌های پیش‌بینی‌شده. بدون تاریخ مراحل، مراحل دوباره یکنواخت پخش می‌شوند.</summary>
+    public async Task ScheduleAsync(Guid planId, ScheduleRequest request, CancellationToken ct)
+    {
+        var plan = await db.Plans.Include(p => p.Lines).Include(p => p.StageTargets).FirstOrDefaultAsync(p => p.Id == planId, ct)
+            ?? throw AppException.NotFound("زیربرنامه");
+        var stages = request.Stages?.Select(x => (x.StageId, x.PlannedDate)).ToList()
+            ?? ProductionPlan.DistributeStageDates(request.PlannedStartDate, request.PlannedEndDate,
+                await OrderedStagesAsync(plan.Lines.Select(l => l.ShoeModelId).Distinct().ToList(), ct)).ToList();
+        // مراحل تازه با کلید ValueGeneratedNever به‌صورت Added کشف می‌شوند.
+        plan.SetSchedule(request.PlannedStartDate, request.PlannedEndDate, stages);
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>اجتماع مراحل مسیر مدل‌ها به ترتیب جایگاه نسبی در مسیرشان.</summary>
+    private async Task<IReadOnlyList<Guid>> OrderedStagesAsync(IReadOnlyList<Guid> modelIds, CancellationToken ct)
+    {
+        var routeIds = await db.ShoeModels.Where(m => modelIds.Contains(m.Id)).Select(m => m.RouteId).Distinct().ToListAsync(ct);
+        var routes = await db.Routes.AsNoTracking().Include(r => r.Steps).Where(r => routeIds.Contains(r.Id)).ToListAsync(ct);
+        return routes
+            .SelectMany(r => r.Steps.Select((step, i) => (step.StageId, Pos: (double)(i + 1) / r.Steps.Count)))
+            .GroupBy(x => x.StageId)
+            .OrderBy(g => g.Min(x => x.Pos))
+            .Select(g => g.Key)
+            .ToList();
     }
 
     public async Task<PlanDetail> GetPlanAsync(Guid planId, CancellationToken ct)
@@ -202,11 +240,11 @@ public class PlanningService(IAppDbContext db, ICurrentUser user, IClock clock)
             item = new FreeStockItem(bundle.UnitId, sku);
             db.FreeStock.Add(item);
             return stock[sku] = item;
-        });
+        }, clock.UtcNow);
         db.StockMovements.AddRange(result.Movements);
 
         var others = await db.Bundles.Where(b => b.ProductionPlanId == plan.Id && b.Id != bundle.Id).Select(b => b.Status).ToListAsync(ct);
-        if (others.All(s => s == BundleStatus.InWarehouse)) plan.MarkCompleted();
+        if (others.All(s => s == BundleStatus.InWarehouse)) plan.MarkCompleted(clock.UtcNow);
 
         await db.SaveChangesAsync(ct);
         return new ReceiveResult(bundle.Number, result.ToOrder, result.ToFreeStock, order?.ExternalNumber, order?.Status);

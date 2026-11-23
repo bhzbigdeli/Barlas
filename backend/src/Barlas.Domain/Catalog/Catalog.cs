@@ -99,6 +99,8 @@ public class ShoeModel : AuditableEntity
     public Guid RouteId { get; private set; }
     public Guid? SoleId { get; private set; }
     public bool IsActive { get; private set; } = true;
+    /// <summary>توضیحات آزاد: جنس رویه، آستر، نکات تولید و …</summary>
+    public string? Description { get; private set; }
 
     /// <summary>ترکیب یک سری: سایز → تعداد جفت.</summary>
     public IReadOnlyList<SeriesSize> Series => _series.OrderBy(s => s.Size).ToList();
@@ -116,6 +118,13 @@ public class ShoeModel : AuditableEntity
     }
 
     public void SetActive(bool active) => IsActive = active;
+
+    public void SetDescription(string? description)
+    {
+        var d = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        if (d?.Length > 2000) throw new DomainException("توضیحات محصول حداکثر ۲۰۰۰ کاراکتر است.");
+        Description = d;
+    }
 
     /// <summary>
     /// سایزهای با تعداد صفر حذف می‌شوند. سری خالی یعنی «هنوز تعریف نشده»: محصول ثبت می‌شود
@@ -196,4 +205,38 @@ internal static class CatalogRules
         if (string.IsNullOrWhiteSpace(name)) throw new DomainException("نام لازم است.");
         return name.Trim();
     }
+}
+
+/// <summary>عکس محصول (یکی برای هر محصول). در دیتابیس نگه داشته می‌شود تا نصب و پشتیبان‌گیری ساده بماند.</summary>
+public class ProductImage : Entity
+{
+    public const int MaxBytes = 2 * 1024 * 1024;
+    private ProductImage() { }
+
+    public ProductImage(Guid shoeModelId, string contentType, byte[] data, DateTime nowUtc)
+    {
+        ShoeModelId = shoeModelId;
+        Replace(contentType, data, nowUtc);
+    }
+
+    public Guid ShoeModelId { get; private set; }
+    public string ContentType { get; private set; } = default!;
+    public byte[] Data { get; private set; } = default!;
+    public DateTime UploadedAtUtc { get; private set; }
+
+    public void Replace(string contentType, byte[] data, DateTime nowUtc)
+    {
+        if (data.Length == 0) throw new DomainException("فایل عکس خالی است.");
+        if (data.Length > MaxBytes) throw new DomainException("حجم عکس حداکثر ۲ مگابایت است.");
+        ContentType = Detect(data) ?? throw new DomainException("فقط عکس JPG، PNG یا WebP پذیرفته می‌شود.");
+        _ = contentType; // نوع اعلام‌شده مرورگر قابل اعتماد نیست؛ از محتوای فایل تشخیص داده می‌شود.
+        Data = data;
+        UploadedAtUtc = nowUtc;
+    }
+
+    private static string? Detect(byte[] d) =>
+        d is [0xFF, 0xD8, 0xFF, ..] ? "image/jpeg"
+        : d is [0x89, 0x50, 0x4E, 0x47, ..] ? "image/png"
+        : d.Length > 12 && d[..4].SequenceEqual("RIFF"u8.ToArray()) && d[8..12].SequenceEqual("WEBP"u8.ToArray()) ? "image/webp"
+        : null;
 }

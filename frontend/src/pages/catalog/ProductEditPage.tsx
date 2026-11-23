@@ -5,7 +5,6 @@ import { api, post, put } from "../../api/client";
 import type { CodedItem, Product, ProductionRoute, SeriesSize } from "../../api/types";
 import { useAuth } from "../../auth/AuthContext";
 import { ErrorText, Field } from "../../components/Field";
-import { formatDate, formatNumber } from "../../lib/format";
 import { SeriesEditor } from "./SeriesEditor";
 
 interface Draft {
@@ -15,6 +14,7 @@ interface Draft {
   routeId: string;
   soleId: string;
   isActive: boolean;
+  description: string;
   series: SeriesSize[];
 }
 
@@ -35,21 +35,30 @@ export function ProductEditPage() {
 
   useEffect(() => {
     if (isNew && routes.data && !draft)
-      setDraft({ code: "", name: "", group: "", routeId: routes.data[0]?.id ?? "", soleId: "", isActive: true, series: [] });
+      setDraft({ code: "", name: "", group: "", routeId: routes.data[0]?.id ?? "", soleId: "", isActive: true, description: "", series: [] });
     if (!isNew && product.data && !draft) {
       const p = product.data;
-      setDraft({ code: p.code, name: p.name, group: p.group ?? "", routeId: p.routeId, soleId: p.soleId ?? "", isActive: p.isActive, series: p.series });
+      setDraft({
+        code: p.code,
+        name: p.name,
+        group: p.group ?? "",
+        routeId: p.routeId,
+        soleId: p.soleId ?? "",
+        isActive: p.isActive,
+        description: p.description ?? "",
+        series: p.series,
+      });
     }
   }, [isNew, routes.data, product.data, draft]);
 
   const save = useMutation({
     mutationFn: (d: Draft) => {
-      const body = { ...d, soleId: d.soleId || null, group: d.group || null, series: d.series.filter((s) => s.quantity > 0) };
+      const body = { ...d, soleId: d.soleId || null, group: d.group || null, description: d.description || null, series: d.series.filter((s) => s.quantity > 0) };
       return isNew ? post<Product>("/catalog/products", body) : put<Product>(`/catalog/products/${id}`, body);
     },
-    onSuccess: async () => {
+    onSuccess: async (saved) => {
       await qc.invalidateQueries({ queryKey: ["products"] });
-      navigate("/catalog/products");
+      navigate(`/catalog/products/${saved.id}`);
     },
   });
 
@@ -63,7 +72,7 @@ export function ProductEditPage() {
 
   return (
     <section>
-      <Link to="/catalog/products">← محصولات</Link>
+      <Link to={isNew ? "/catalog/products" : `/catalog/products/${id}`}>{isNew ? "← محصولات" : "← صفحه محصول"}</Link>
       <h2>{isNew ? "محصول جدید" : `محصول ${draft.code}`}</h2>
 
       <form className="card" onSubmit={submit}>
@@ -106,6 +115,16 @@ export function ProductEditPage() {
           </Field>
         </div>
 
+        <Field label="توضیحات" hint="جنس رویه و آستر، نکات تولید، …">
+          <textarea
+            rows={3}
+            value={draft.description}
+            onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+            disabled={readOnly}
+            maxLength={2000}
+          />
+        </Field>
+
         <fieldset>
           <legend>سری سایز</legend>
           {draft.series.length === 0 && (
@@ -124,46 +143,13 @@ export function ProductEditPage() {
           <span>فعال (در سفارش‌ها و برنامه‌ریزی قابل استفاده است)</span>
         </label>
 
-        {product.data && product.data.rates.length > 0 && (
-          <fieldset>
-            <legend>دستمزد کارمزدی هر مرحله (ریال برای هر جفت)</legend>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>مرحله</th>
-                    <th>دستمزد</th>
-                    <th>از تاریخ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {product.data.rates.map((r) => (
-                    <tr key={r.stageName + r.effectiveFrom}>
-                      <td>{r.stageName}</td>
-                      <td>{formatNumber(r.ratePerPair)}</td>
-                      <td>{formatDate(r.effectiveFrom)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <th>جمع</th>
-                    <th>{formatNumber(product.data.rates.reduce((s, r) => s + r.ratePerPair, 0))}</th>
-                    <th />
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </fieldset>
-        )}
-
         <ErrorText error={save.error} />
         {!readOnly && (
           <div className="actions">
             <button type="submit" disabled={save.isPending}>
               ذخیره
             </button>
-            <Link className="button secondary" to="/catalog/products">
+            <Link className="button secondary" to={isNew ? "/catalog/products" : `/catalog/products/${id}`}>
               انصراف
             </Link>
           </div>

@@ -9,14 +9,15 @@ public sealed record SeriesSizeDto(int Size, int Quantity);
 
 public sealed record ProductDto(
     Guid Id, string Code, string Name, string? Group, Guid RouteId, string RouteName, Guid? SoleId, string? SoleName,
-    bool IsActive, IReadOnlyList<SeriesSizeDto> Series, int PairsPerSeries, IReadOnlyList<PieceRateDto> Rates);
+    bool IsActive, IReadOnlyList<SeriesSizeDto> Series, int PairsPerSeries, IReadOnlyList<PieceRateDto> Rates,
+    string? Description = null, DateTime? ImageUploadedAtUtc = null);
 
 /// <summary>دستمزد کارمزدی یک مرحله برای یک جفت (ریال)، از تاریخ آنالیز.</summary>
 public sealed record PieceRateDto(string StageName, decimal RatePerPair, DateOnly EffectiveFrom);
 
 public sealed record SaveProductRequest(
     string Code, string Name, Guid RouteId, Guid? SoleId, IReadOnlyList<SeriesSizeDto> Series, bool IsActive = true,
-    string? Group = null);
+    string? Group = null, string? Description = null);
 
 public sealed record CodedItemDto(Guid Id, string Code, string Name, bool IsActive);
 
@@ -25,7 +26,7 @@ public sealed record SaveCodedItemRequest(string Code, string Name, bool IsActiv
 public sealed record RouteDto(Guid Id, string Name, IReadOnlyList<string> Stages);
 
 /// <summary>تعریف محصول و اطلاعات پایه (رنگ، زیره). خواندن برای همه، نوشتن با مجوز «تعریف محصول».</summary>
-public class CatalogService(IAppDbContext db)
+public partial class CatalogService(IAppDbContext db, IClock clock)
 {
     // ---------- محصول ----------
 
@@ -33,7 +34,8 @@ public class CatalogService(IAppDbContext db)
     {
         var models = await db.ShoeModels.AsNoTracking().Include(m => m.Series).OrderBy(m => m.Code).ToListAsync(ct);
         var (routes, soles) = await LookupsAsync(ct);
-        return models.Select(m => ToDto(m, routes, soles)).ToList();
+        var images = await db.ProductImages.ToDictionaryAsync(i => i.ShoeModelId, i => i.UploadedAtUtc, ct);
+        return models.Select(m => ToDto(m, routes, soles) with { ImageUploadedAtUtc = images.TryGetValue(m.Id, out var at) ? at : null }).ToList();
     }
 
     public async Task<ProductDto> GetProductAsync(Guid id, CancellationToken ct)
@@ -47,7 +49,8 @@ public class CatalogService(IAppDbContext db)
         var rates = (await db.PieceRates.AsNoTracking().Where(r => r.ShoeModelId == id).ToListAsync(ct))
             .OrderBy(r => order.GetValueOrDefault(r.StageId, int.MaxValue)).ThenByDescending(r => r.EffectiveFrom)
             .Select(r => new PieceRateDto(stages[r.StageId], r.RatePerPair, r.EffectiveFrom)).ToList();
-        return ToDto(model, routes, soles, rates);
+        var image = await db.ProductImages.Where(i => i.ShoeModelId == id).Select(i => (DateTime?)i.UploadedAtUtc).FirstOrDefaultAsync(ct);
+        return ToDto(model, routes, soles, rates) with { ImageUploadedAtUtc = image };
     }
 
     public async Task<ProductDto> CreateProductAsync(SaveProductRequest request, CancellationToken ct)
@@ -59,6 +62,7 @@ public class CatalogService(IAppDbContext db)
 
         var model = new ShoeModel(code, request.Name, request.RouteId, request.SoleId, ToSeries(request.Series), request.Group);
         model.SetActive(request.IsActive);
+        model.SetDescription(request.Description);
         db.ShoeModels.Add(model);
         await db.SaveChangesAsync(ct);
         return await GetProductAsync(model.Id, ct);
@@ -74,6 +78,7 @@ public class CatalogService(IAppDbContext db)
         // سایز تازه در سری → Added، سایز حذف‌شده → Delete (شناسه‌ها ValueGeneratedNever‌اند).
         model.Update(request.Name, request.RouteId, request.SoleId, ToSeries(request.Series), request.Group);
         model.SetActive(request.IsActive);
+        model.SetDescription(request.Description);
         await db.SaveChangesAsync(ct);
         return await GetProductAsync(id, ct);
     }
@@ -97,7 +102,7 @@ public class CatalogService(IAppDbContext db)
         IReadOnlyList<PieceRateDto>? rates = null) =>
         new(m.Id, m.Code, m.Name, m.Group, m.RouteId, routes.GetValueOrDefault(m.RouteId, "?"),
             m.SoleId, m.SoleId is { } s ? soles.GetValueOrDefault(s) : null, m.IsActive,
-            m.Series.Select(x => new SeriesSizeDto(x.Size, x.Quantity)).ToList(), m.PairsPerSeries, rates ?? []);
+            m.Series.Select(x => new SeriesSizeDto(x.Size, x.Quantity)).ToList(), m.PairsPerSeries, rates ?? [], m.Description);
 
     // ---------- رنگ و زیره ----------
 

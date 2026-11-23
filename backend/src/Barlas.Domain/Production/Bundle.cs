@@ -60,6 +60,10 @@ public class Bundle : AuditableEntity, IUnitScoped
     /// <summary>آخرین مرحله تمام‌شده (null یعنی هیچ).</summary>
     public Guid? LastCompletedStageId { get; private set; }
 
+    /// <summary>زمان پایان آخرین مرحله (با دوباره‌کاری پاک می‌شود).</summary>
+    public DateTime? FinishedAtUtc { get; private set; }
+    public DateTime? InWarehouseAtUtc { get; private set; }
+
     public Guid? NextStageId
     {
         get
@@ -82,6 +86,7 @@ public class Bundle : AuditableEntity, IUnitScoped
         _scans.Add(scan);
         LastCompletedStageId = stageId;
         Status = NextStageId is null ? BundleStatus.Finished : BundleStatus.InProgress;
+        if (Status == BundleStatus.Finished) FinishedAtUtc = nowUtc;
         return scan;
     }
 
@@ -98,13 +103,15 @@ public class Bundle : AuditableEntity, IUnitScoped
         _scans.Add(scan);
         LastCompletedStageId = target == 0 ? null : _route[target - 1];
         Status = BundleStatus.InProgress;
+        FinishedAtUtc = null;
         return scan;
     }
 
-    public void MarkInWarehouse()
+    public void MarkInWarehouse(DateTime nowUtc)
     {
         if (Status != BundleStatus.Finished) throw new DomainException("دسته هنوز همه مراحل را طی نکرده است.");
         Status = BundleStatus.InWarehouse;
+        InWarehouseAtUtc = nowUtc;
     }
 
     private static string NewToken() =>

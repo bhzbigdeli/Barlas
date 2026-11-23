@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { api } from "../../api/client";
 import type { Product } from "../../api/types";
 import { useAuth } from "../../auth/AuthContext";
+import { AuthImage } from "../../components/AuthImage";
 import { ErrorText } from "../../components/Field";
 import { formatNumber } from "../../lib/format";
 
@@ -27,6 +28,7 @@ export function ProductsPage() {
         <table>
           <thead>
             <tr>
+              <th aria-label="عکس" />
               <th>کد</th>
               <th>نام</th>
               <th>گروه</th>
@@ -39,10 +41,21 @@ export function ProductsPage() {
           <tbody>
             {products.data?.map((p) => (
               <tr key={p.id} className={p.isActive ? "" : "inactive"}>
+                <td className="thumb-cell">
+                  {p.imageUploadedAtUtc && (
+                    <AuthImage
+                      className="thumb"
+                      src={`/catalog/products/${p.id}/image?v=${encodeURIComponent(p.imageUploadedAtUtc)}`}
+                      alt=""
+                    />
+                  )}
+                </td>
                 <td dir="ltr">
                   <Link to={`/catalog/products/${p.id}`}>{p.code}</Link>
                 </td>
-                <td>{p.name}</td>
+                <td>
+                  <Link to={`/catalog/products/${p.id}`}>{p.name}</Link>
+                </td>
                 <td>{p.group ?? "—"}</td>
                 <td>
                   {p.series.length === 0 && <span className="warn">تعریف نشده</span>}
@@ -61,7 +74,7 @@ export function ProductsPage() {
             ))}
             {products.data?.length === 0 && (
               <tr>
-                <td colSpan={7} className="muted">
+                <td colSpan={8} className="muted">
                   هنوز محصولی تعریف نشده.
                 </td>
               </tr>

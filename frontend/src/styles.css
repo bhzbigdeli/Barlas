@@ -567,3 +567,230 @@ bdi {
   flex: 0 1 160px;
   width: auto;
 }
+
+/* ---------- پیشرفت، دیرکرد، گزارش‌ها ---------- */
+.progress {
+  position: relative;
+  height: 1.25rem;
+  min-width: 6rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress.large {
+  height: 2rem;
+  margin-block: 0.5rem 1rem;
+}
+.progress-fill {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  background: var(--ok);
+  opacity: 0.35;
+}
+.progress-label {
+  position: relative;
+  display: block;
+  text-align: center;
+  font-size: 0.8rem;
+  line-height: 1.25rem;
+}
+.progress.large .progress-label {
+  font-size: 1rem;
+  line-height: 2rem;
+  font-weight: 700;
+}
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.badge.bad {
+  color: var(--error);
+  border: 1px solid var(--error);
+}
+.badge.ok {
+  color: var(--ok);
+  border: 1px solid var(--ok);
+}
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.75rem;
+  margin-block: 0.75rem;
+}
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.kpi strong {
+  font-size: 1.15rem;
+}
+.kpi.bad strong {
+  color: var(--error);
+}
+.kpi.good strong {
+  color: var(--ok);
+}
+.dot {
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  border: 2px solid var(--muted);
+}
+.dot.done {
+  background: var(--ok);
+  border-color: var(--ok);
+}
+.pending-row td {
+  color: var(--muted);
+}
+.stage-list {
+  display: grid;
+  gap: 0.5rem;
+}
+.stage-row {
+  display: grid;
+  grid-template-columns: 8rem minmax(6rem, 1fr) auto auto auto;
+  gap: 0.75rem;
+  align-items: center;
+}
+@media (max-width: 700px) {
+  .stage-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+table.matrix td,
+table.matrix th {
+  text-align: center;
+  font-size: 0.85rem;
+}
+.cell-done {
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
+}
+.cell-na {
+  color: var(--muted);
+}
+.rework {
+  color: var(--error);
+}
+.product-head {
+  display: grid;
+  grid-template-columns: minmax(12rem, 18rem) 1fr;
+  gap: 1rem;
+}
+@media (max-width: 700px) {
+  .product-head {
+    grid-template-columns: 1fr;
+  }
+}
+.product-photo img,
+.product-photo .img-placeholder {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+.img-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: var(--bg);
+}
+.thumb,
+.thumb-cell .img-placeholder {
+  width: 2.75rem;
+  height: 2.75rem;
+  object-fit: cover;
+  border-radius: 6px;
+  font-size: 0;
+}
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1rem;
+  margin: 0;
+}
+.facts dt {
+  color: var(--muted);
+}
+.facts dd {
+  margin: 0;
+}
+.pre-line {
+  white-space: pre-line;
+}
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1rem;
+}
+.tab {
+  background: none;
+  color: var(--muted);
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 0.5rem 0.75rem;
+}
+.tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  font-weight: 700;
+}
+.range-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+}
+.range-bar .presets {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+.date-input {
+  width: 8.5rem;
+}
+.date-input.invalid {
+  border-color: var(--error);
+}
+.schedule-editor {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}
+.bar-cell {
+  width: 30%;
+  min-width: 6rem;
+}
+.hbar {
+  height: 0.75rem;
+  background: var(--primary);
+  opacity: 0.6;
+  border-radius: 3px;
+}
+details > summary {
+  cursor: pointer;
+}
+.print-only {
+  display: none;
+}
+@media print {
+  .print-only {
+    display: block;
+  }
+}

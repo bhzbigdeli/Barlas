@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-نرم‌افزار برنامه‌ریزی و پیگیری تولید کارخانه کفش (برلاس). طرح مصوب: https://claude.ai/artifact/QfZQZE2Z6kfyhj9xgi7fTz
+نرم‌افزار برنامه‌ریزی و پیگیری تولید کارخانه کفش (بارلاس). طرح مصوب: https://claude.ai/artifact/QfZQZE2Z6kfyhj9xgi7fTz
 معماری و نگاشت سند به کد: `docs/architecture.md`.
 
 ## زبان

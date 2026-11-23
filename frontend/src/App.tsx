@@ -7,6 +7,7 @@ import { UsersPage } from "./pages/admin/UsersPage";
 import { WorkersPage } from "./pages/admin/WorkersPage";
 import { BasicDataPage } from "./pages/catalog/BasicDataPage";
 import { ProductEditPage } from "./pages/catalog/ProductEditPage";
+import { ProductPage } from "./pages/catalog/ProductPage";
 import { ProductsPage } from "./pages/catalog/ProductsPage";
 import { ChangePasswordPage } from "./pages/ChangePasswordPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -17,6 +18,7 @@ import { ScanPage } from "./pages/ScanPage";
 import { KardexPage } from "./pages/planning/KardexPage";
 import { PlanPage } from "./pages/planning/PlanPage";
 import { PlansPage } from "./pages/planning/PlansPage";
+import { ReportsPage } from "./pages/ReportsPage";
 import { WarehousePage } from "./pages/WarehousePage";
 
 export function App() {
@@ -60,7 +62,15 @@ export function App() {
             </RequirePermission>
           }
         />
-        <Route path="catalog/products/:id" element={<ProductEditPage />} />
+        <Route path="catalog/products/:id" element={<ProductPage />} />
+        <Route
+          path="catalog/products/:id/edit"
+          element={
+            <RequirePermission permission="ManageCatalog">
+              <ProductEditPage />
+            </RequirePermission>
+          }
+        />
         <Route path="catalog/basic" element={<BasicDataPage />} />
 
         <Route
@@ -84,6 +94,14 @@ export function App() {
           element={
             <RequirePermission permission="ManageUsers">
               <WorkersPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="reports"
+          element={
+            <RequirePermission permission="ViewReports">
+              <ReportsPage />
             </RequirePermission>
           }
         />

@@ -24,6 +24,7 @@ const sections: NavSection[] = [
       { to: "/plans", label: "زیربرنامه‌ها" },
       { to: "/scan", label: "اسکن کاردکس", permission: "ScanStages" },
       { to: "/warehouse", label: "انبار محصول", permission: "ManageWarehouse" },
+      { to: "/reports", label: "گزارش‌ها", permission: "ViewReports" },
     ],
   },
   {
@@ -55,7 +56,7 @@ export function Layout() {
     <div className={`app ${open ? "nav-open" : ""}`}>
       <aside className="sidebar" aria-label="منوی اصلی">
         <div className="sidebar-brand">
-          <strong>برلاس</strong>
+          <strong>بارلاس</strong>
           <span className="muted">برنامه‌ریزی و پیگیری تولید</span>
         </div>
 
@@ -100,7 +101,7 @@ export function Layout() {
           <button className="secondary" onClick={() => setOpen(true)} aria-label="باز کردن منو">
             ☰
           </button>
-          <strong>برلاس</strong>
+          <strong>بارلاس</strong>
         </header>
         <main className="content">
           <Outlet />

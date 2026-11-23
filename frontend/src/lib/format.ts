@@ -7,6 +7,15 @@ const dateFmt = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
   timeZone: "Asia/Tehran", // روز کاری کارخانه، مستقل از ساعت دستگاه
 });
 
+const dateTimeFmt = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "Asia/Tehran",
+});
+
 const numberFmt = new Intl.NumberFormat("fa-IR");
 
 /** «2026-11-24» (DateOnly از API) → «۱۴۰۵/۰۹/۰۳» */
@@ -17,6 +26,14 @@ export function formatDate(value: string | null | undefined): string {
   const iso = value.length === 10 ? `${value}T12:00:00Z` : /[zZ]|[+-]\d\d:?\d\d$/.test(value) ? value : `${value}Z`;
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "—" : dateFmt.format(d);
+}
+
+/** زمان کامل (تاریخ شمسی + ساعت تهران). */
+export function formatDateTime(value: string | null | undefined): string {
+  if (!value) return "—";
+  const iso = /[zZ]|[+-]\d\d:?\d\d$/.test(value) ? value : `${value}Z`;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : dateTimeFmt.format(d);
 }
 
 export function formatNumber(n: number): string {

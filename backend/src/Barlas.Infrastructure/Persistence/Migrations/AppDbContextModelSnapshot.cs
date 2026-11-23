@@ -99,6 +99,34 @@ namespace Barlas.Infrastructure.Persistence.Migrations
                     b.ToTable("PieceRates");
                 });
 
+            modelBuilder.Entity("Barlas.Domain.Catalog.ProductImage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<Guid>("ShoeModelId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UploadedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ShoeModelId")
+                        .IsUnique();
+
+                    b.ToTable("ProductImages");
+                });
+
             modelBuilder.Entity("Barlas.Domain.Catalog.ProductionRoute", b =>
                 {
                     b.Property<Guid>("Id")
@@ -222,6 +250,10 @@ namespace Barlas.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
                     b.Property<string>("Group")
                         .HasMaxLength(60)
@@ -508,8 +540,20 @@ namespace Barlas.Infrastructure.Persistence.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<DateTime?>("InProductionAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateOnly>("OrderDate")
                         .HasColumnType("date");
+
+                    b.Property<DateTime?>("PlannedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ReadyAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ShippedAtUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -787,6 +831,30 @@ namespace Barlas.Infrastructure.Persistence.Migrations
                     b.ToTable("PlanLines");
                 });
 
+            modelBuilder.Entity("Barlas.Domain.Planning.PlanStageTarget", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("PlannedDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("ProductionPlanId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("StageId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StageId");
+
+                    b.HasIndex("ProductionPlanId", "StageId")
+                        .IsUnique();
+
+                    b.ToTable("PlanStageTargets");
+                });
+
             modelBuilder.Entity("Barlas.Domain.Planning.ProductionPlan", b =>
                 {
                     b.Property<Guid>("Id")
@@ -797,6 +865,9 @@ namespace Barlas.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid?>("ApprovedBy")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
@@ -809,11 +880,23 @@ namespace Barlas.Infrastructure.Persistence.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
+                    b.Property<DateOnly?>("PlannedEndDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("PlannedStartDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("ReleasedAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<Guid?>("SalesOrderId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
+
+                    b.Property<DateTime?>("SubmittedAtUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid>("UnitId")
                         .HasColumnType("uniqueidentifier");
@@ -847,6 +930,12 @@ namespace Barlas.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("FinishedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("InWarehouseAtUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid?>("LastCompletedStageId")
                         .HasColumnType("uniqueidentifier");
@@ -977,6 +1066,15 @@ namespace Barlas.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("StageId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Barlas.Domain.Catalog.ProductImage", b =>
+                {
+                    b.HasOne("Barlas.Domain.Catalog.ShoeModel", null)
+                        .WithMany()
+                        .HasForeignKey("ShoeModelId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
@@ -1149,6 +1247,21 @@ namespace Barlas.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Barlas.Domain.Planning.PlanStageTarget", b =>
+                {
+                    b.HasOne("Barlas.Domain.Planning.ProductionPlan", null)
+                        .WithMany("StageTargets")
+                        .HasForeignKey("ProductionPlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Barlas.Domain.Catalog.ProductionStage", null)
+                        .WithMany()
+                        .HasForeignKey("StageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Barlas.Domain.Planning.ProductionPlan", b =>
                 {
                     b.HasOne("Barlas.Domain.Orders.SalesOrder", null)
@@ -1236,6 +1349,8 @@ namespace Barlas.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Barlas.Domain.Planning.ProductionPlan", b =>
                 {
                     b.Navigation("Lines");
+
+                    b.Navigation("StageTargets");
                 });
 
             modelBuilder.Entity("Barlas.Domain.Production.Bundle", b =>

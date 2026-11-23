@@ -27,7 +27,7 @@ export function LoginPage() {
   return (
     <div className="center">
       <form className="card login" onSubmit={submit}>
-        <h1>برلاس</h1>
+        <h1>بارلاس</h1>
         <p className="muted">برنامه‌ریزی و پیگیری تولید</p>
         <label>
           نام کاربری

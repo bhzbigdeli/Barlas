@@ -169,6 +169,32 @@ export interface Product {
   series: SeriesSize[];
   pairsPerSeries: number;
   rates: PieceRate[];
+  description: string | null;
+  imageUploadedAtUtc: string | null;
+}
+
+export interface ProductOverview {
+  product: Product;
+  routeStages: string | null;
+  orderedPairs: number;
+  producedPairs: number;
+  shippedPairs: number;
+  freeStockPairs: number;
+  laborPerPair: number;
+  orders: {
+    orderId: string;
+    orderNumber: string;
+    customerName: string | null;
+    colorName: string;
+    pairs: number;
+    shippedPairs: number;
+    status: SalesOrderStatus;
+    orderDate: string;
+    dueDate: string | null;
+  }[];
+  plans: { planId: string; planNumber: string; status: PlanStatus; pairs: number; plannedEndDate: string | null; completedAtUtc: string | null }[];
+  stock: { unitName: string; colorName: string; size: number; quantity: number }[];
+  wip: { stageName: string; bundles: number; pairs: number }[];
 }
 
 export interface CodedItem {
@@ -300,4 +326,174 @@ export interface Worker {
   personnelCode: string;
   fullName: string;
   isActive: boolean;
+}
+
+// --- نمای کامل زیربرنامه ---
+
+export interface Milestone {
+  key: string;
+  title: string;
+  plannedDate: string | null;
+  actualAtUtc: string | null;
+  delayDays: number | null;
+}
+
+export interface StageProgress {
+  stageId: string;
+  name: string;
+  plannedDate: string | null;
+  pairsDone: number;
+  pairsTotal: number;
+  percent: number;
+  firstAtUtc: string | null;
+  finishedAtUtc: string | null;
+  delayDays: number | null;
+}
+
+export interface BundleCell {
+  stageId: string;
+  inRoute: boolean;
+  doneAtUtc: string | null;
+  workerName: string | null;
+  reworkCount: number;
+}
+
+export interface BundleProgress {
+  id: string;
+  number: string;
+  modelCode: string;
+  colorName: string;
+  pairs: number;
+  status: BundleStatus;
+  percent: number;
+  nextStage: string | null;
+  cells: BundleCell[];
+  finishedAtUtc: string | null;
+  inWarehouseAtUtc: string | null;
+}
+
+export interface PlanOverview {
+  id: string;
+  number: string;
+  status: PlanStatus;
+  unitName: string;
+  salesOrderId: string | null;
+  orderNumber: string | null;
+  customerName: string | null;
+  orderDueDate: string | null;
+  orderStatus: SalesOrderStatus | null;
+  orderPairs: number;
+  surplusPairs: number;
+  totalPairs: number;
+  pairsInWarehouse: number;
+  percent: number;
+  plannedStartDate: string | null;
+  plannedEndDate: string | null;
+  actualStartUtc: string | null;
+  actualEndUtc: string | null;
+  delayDays: number | null;
+  laborCost: number;
+  milestones: Milestone[];
+  stages: StageProgress[];
+  bundles: BundleProgress[];
+  workers: { name: string; personnelCode: string; pairs: number; wage: number }[];
+}
+
+// --- گزارش‌ها ---
+
+export interface ReportSummary {
+  range: { from: string; to: string };
+  ordersReceived: number;
+  pairsOrdered: number;
+  pairsProduced: number;
+  pairsShipped: number;
+  ordersShipped: number;
+  ordersShippedOnTime: number;
+  onTimePercent: number | null;
+  avgLeadDays: number | null;
+  openOrders: number;
+  lateOpenOrders: number;
+  pairsInProgress: number;
+  laborCost: number;
+}
+
+export interface DelayReport {
+  orders: {
+    id: string;
+    number: string;
+    customerName: string | null;
+    unitName: string;
+    status: SalesOrderStatus;
+    pairs: number;
+    shippedPairs: number;
+    dueDate: string | null;
+    shippedAtUtc: string | null;
+    delayDays: number;
+  }[];
+  atRisk: { id: string; number: string; customerName: string | null; dueDate: string; daysLeft: number; pairs: number; readyPairs: number }[];
+  plans: {
+    id: string;
+    number: string;
+    orderNumber: string | null;
+    status: PlanStatus;
+    percent: number;
+    plannedEndDate: string | null;
+    completedAtUtc: string | null;
+    delayDays: number;
+  }[];
+  stages: { planId: string; planNumber: string; stageName: string; plannedDate: string; pairsDone: number; pairsTotal: number; delayDays: number }[];
+}
+
+export interface OrderTimeline {
+  id: string;
+  number: string;
+  customerName: string | null;
+  unitName: string;
+  status: SalesOrderStatus;
+  pairs: number;
+  shippedPairs: number;
+  orderDate: string;
+  receivedAtUtc: string;
+  plannedAtUtc: string | null;
+  inProductionAtUtc: string | null;
+  readyAtUtc: string | null;
+  firstShipmentAtUtc: string | null;
+  shippedAtUtc: string | null;
+  dueDate: string | null;
+  delayDays: number | null;
+  leadDays: number | null;
+}
+
+export interface DailyProduction {
+  stages: string[];
+  days: { date: string; pairsByStage: Record<string, number>; total: number }[];
+  totals: Record<string, number>;
+}
+
+export interface WorkerOutput {
+  workerId: string;
+  personnelCode: string;
+  name: string;
+  unitName: string;
+  scans: number;
+  pairs: number;
+  reworks: number;
+  activeDays: number;
+  wage: number;
+  pairsByStage: Record<string, number>;
+}
+
+export interface WipReport {
+  stages: { stageName: string; bundles: number; pairs: number; avgWaitDays: number; maxWaitDays: number }[];
+  oldest: {
+    planId: string;
+    planNumber: string;
+    bundleNumber: string;
+    modelCode: string;
+    colorName: string;
+    pairs: number;
+    waiting: string;
+    sinceUtc: string;
+    waitDays: number;
+  }[];
 }

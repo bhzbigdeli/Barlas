@@ -35,7 +35,7 @@ public sealed record IntakeResult(int Created, int Skipped, IReadOnlyList<string
 /// دریافت سفارش: تخصیص به واحد با کد تامین‌کننده، ساخت سفارش، و سنجش فوری با موجودی آزاد.
 /// سفارش تکراری (همان شماره در همان واحد) نادیده گرفته می‌شود تا ورود دوباره فایل بی‌خطر باشد.
 /// </summary>
-public class OrderIntakeService(IAppDbContext db)
+public class OrderIntakeService(IAppDbContext db, IClock clock)
 {
     public async Task<IntakeResult> IntakeAsync(IEnumerable<ImportedOrder> orders, CancellationToken ct)
     {
@@ -83,7 +83,7 @@ public class OrderIntakeService(IAppDbContext db)
             db.SalesOrders.Add(order);
 
             var stock = await db.FreeStock.IgnoreQueryFilters().Where(s => s.UnitId == unit.Id && s.Quantity > 0).ToListAsync(ct);
-            db.StockMovements.AddRange(FreeStockAllocator.Allocate(order, stock));
+            db.StockMovements.AddRange(FreeStockAllocator.Allocate(order, stock, clock.UtcNow));
             created++;
         }
 

@@ -24,6 +24,18 @@ public class PlanningController(PlanningService planning) : ControllerBase
     [HttpGet("plans/{id:guid}")]
     public Task<PlanDetail> Get(Guid id, CancellationToken ct) => planning.GetPlanAsync(id, ct);
 
+    [Authorize(Policy = nameof(Permission.ManagePlans))]
+    [HttpPut("plans/{id:guid}/schedule")]
+    public async Task<PlanOverview> Schedule(Guid id, ScheduleRequest request, CancellationToken ct)
+    {
+        await planning.ScheduleAsync(id, request, ct);
+        return await planning.GetOverviewAsync(id, ct);
+    }
+
+    /// <summary>نمای کامل زیربرنامه: پیشرفت، تاریخ‌های پیش‌بینی‌شده و واقعی هر قدم، ماتریس دسته × مرحله.</summary>
+    [HttpGet("plans/{id:guid}/overview")]
+    public Task<PlanOverview> Overview(Guid id, CancellationToken ct) => planning.GetOverviewAsync(id, ct);
+
     [Authorize(Policy = nameof(Permission.ApproveSurplus))]
     [HttpPost("plans/{id:guid}/approve")]
     public Task<PlanDetail> Approve(Guid id, CancellationToken ct) => planning.ApproveAsync(id, ct);

@@ -40,7 +40,7 @@ public class ProductionCycleTests
         var order = Order((40, 10), (41, 10));
         var stock = new[] { Stock(Unit, 40, 4), Stock(Unit, 41, 25) };
 
-        var moves = FreeStockAllocator.Allocate(order, stock);
+        var moves = FreeStockAllocator.Allocate(order, stock, Now);
 
         var line = order.Lines[0];
         Assert.Equal(6, line.Size(40).Outstanding);
@@ -55,7 +55,7 @@ public class ProductionCycleTests
     public void Free_stock_of_another_unit_is_never_used()
     {
         var order = Order((40, 10));
-        var moves = FreeStockAllocator.Allocate(order, [Stock(OtherUnit, 40, 50)]);
+        var moves = FreeStockAllocator.Allocate(order, [Stock(OtherUnit, 40, 50)], Now);
 
         Assert.Empty(moves);
         Assert.Equal(10, order.Lines[0].Size(40).Outstanding);
@@ -65,7 +65,7 @@ public class ProductionCycleTests
     public void Order_fully_covered_by_stock_becomes_ready_to_ship()
     {
         var order = Order((40, 3));
-        FreeStockAllocator.Allocate(order, [Stock(Unit, 40, 3)]);
+        FreeStockAllocator.Allocate(order, [Stock(Unit, 40, 3)], Now);
         Assert.Equal(SalesOrderStatus.ReadyToShip, order.Status);
     }
 
@@ -77,7 +77,7 @@ public class ProductionCycleTests
         var plan = new ProductionPlan(Unit, "P-1", Guid.NewGuid());
         plan.SetLine(new SkuKey(Model, Color, 40), null, orderQuantity: 100, surplusQuantity: surplus);
 
-        plan.Submit(0.20m);
+        plan.Submit(0.20m, Now);
 
         Assert.Equal(expected, plan.Status);
     }
@@ -89,7 +89,7 @@ public class ProductionCycleTests
         plan.SetLine(new SkuKey(Model, Color, 40), null, 10, 10);
         Assert.Throws<DomainException>(() => plan.Approve(Guid.NewGuid(), Now));
 
-        plan.Submit(0.20m);
+        plan.Submit(0.20m, Now);
         plan.Approve(Guid.NewGuid(), Now);
         Assert.Equal(PlanStatus.Approved, plan.Status);
     }
@@ -138,7 +138,7 @@ public class ProductionCycleTests
 
         var stock = new Dictionary<SkuKey, FreeStockItem>();
         var result = WarehouseReceipt.Receive(bundle, order,
-            sku => stock.TryGetValue(sku, out var s) ? s : stock[sku] = new FreeStockItem(Unit, sku));
+            sku => stock.TryGetValue(sku, out var s) ? s : stock[sku] = new FreeStockItem(Unit, sku), Now);
 
         Assert.Equal(15, result.ToOrder);
         Assert.Equal(5, result.ToFreeStock);
@@ -146,13 +146,15 @@ public class ProductionCycleTests
         Assert.Equal(3, stock[new SkuKey(Model, Color, 42)].Quantity);
         Assert.Equal(SalesOrderStatus.ReadyToShip, order.Status);
         Assert.Equal(BundleStatus.InWarehouse, bundle.Status);
+        Assert.Equal(Now, bundle.InWarehouseAtUtc);
+        Assert.Equal(Now, order.ReadyAtUtc);
     }
 
     [Fact]
     public void Unfinished_bundle_cannot_enter_warehouse()
     {
         var bundle = NewBundle((40, 1));
-        Assert.Throws<DomainException>(() => WarehouseReceipt.Receive(bundle, null, sku => new FreeStockItem(Unit, sku)));
+        Assert.Throws<DomainException>(() => WarehouseReceipt.Receive(bundle, null, sku => new FreeStockItem(Unit, sku), Now));
     }
 
     [Fact]

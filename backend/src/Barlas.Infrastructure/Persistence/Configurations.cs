@@ -114,6 +114,7 @@ internal sealed class ShoeModelConfig : IEntityTypeConfiguration<ShoeModel>
         b.Property(x => x.Code).HasMaxLength(30);
         b.Property(x => x.Name).HasMaxLength(100);
         b.Property(x => x.Group).HasMaxLength(60);
+        b.Property(x => x.Description).HasMaxLength(2000);
         b.HasIndex(x => x.Code).IsUnique();
         b.HasOne<ProductionRoute>().WithMany().HasForeignKey(x => x.RouteId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<Sole>().WithMany().HasForeignKey(x => x.SoleId).OnDelete(DeleteBehavior.Restrict);
@@ -126,6 +127,16 @@ internal sealed class SeriesSizeConfig : IEntityTypeConfiguration<SeriesSize>
 {
     public void Configure(EntityTypeBuilder<SeriesSize> b) =>
         b.HasIndex(x => new { x.ShoeModelId, x.Size }).IsUnique();
+}
+
+internal sealed class ProductImageConfig : IEntityTypeConfiguration<ProductImage>
+{
+    public void Configure(EntityTypeBuilder<ProductImage> b)
+    {
+        b.Property(x => x.ContentType).HasMaxLength(30);
+        b.HasIndex(x => x.ShoeModelId).IsUnique();
+        b.HasOne<ShoeModel>().WithMany().HasForeignKey(x => x.ShoeModelId).OnDelete(DeleteBehavior.Cascade);
+    }
 }
 
 internal sealed class PieceRateConfig : IEntityTypeConfiguration<PieceRate>
@@ -216,6 +227,16 @@ internal sealed class PlanConfig : IEntityTypeConfiguration<ProductionPlan>
         b.HasOne<ProductionUnit>().WithMany().HasForeignKey(x => x.UnitId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<SalesOrder>().WithMany().HasForeignKey(x => x.SalesOrderId).OnDelete(DeleteBehavior.Restrict);
         b.HasMany(x => x.Lines).WithOne().HasForeignKey(l => l.ProductionPlanId).OnDelete(DeleteBehavior.Cascade);
+        b.HasMany(x => x.StageTargets).WithOne().HasForeignKey(t => t.ProductionPlanId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+internal sealed class PlanStageTargetConfig : IEntityTypeConfiguration<PlanStageTarget>
+{
+    public void Configure(EntityTypeBuilder<PlanStageTarget> b)
+    {
+        b.HasIndex(x => new { x.ProductionPlanId, x.StageId }).IsUnique();
+        b.HasOne<ProductionStage>().WithMany().HasForeignKey(x => x.StageId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 

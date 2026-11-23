@@ -26,6 +26,7 @@ public interface IAppDbContext
     DbSet<Sole> Soles { get; }
     DbSet<ShoeModel> ShoeModels { get; }
     DbSet<PieceRate> PieceRates { get; }
+    DbSet<ProductImage> ProductImages { get; }
 
     DbSet<SalesOrder> SalesOrders { get; }
     DbSet<Shipment> Shipments { get; }

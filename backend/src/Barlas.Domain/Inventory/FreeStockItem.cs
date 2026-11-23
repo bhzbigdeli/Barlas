@@ -83,7 +83,7 @@ public enum StockMovementReason
 /// </summary>
 public static class FreeStockAllocator
 {
-    public static IReadOnlyList<StockMovement> Allocate(SalesOrder order, IEnumerable<FreeStockItem> stock)
+    public static IReadOnlyList<StockMovement> Allocate(SalesOrder order, IEnumerable<FreeStockItem> stock, DateTime nowUtc)
     {
         var bySku = stock.Where(s => s.UnitId == order.UnitId).ToDictionary(s => s.Sku);
         var movements = new List<StockMovement>();
@@ -101,7 +101,7 @@ public static class FreeStockAllocator
             movements.Add(new StockMovement(order.UnitId, sku, -taken, StockMovementReason.ReservedForOrder, line.Id, null));
         }
 
-        order.RefreshReadiness();
+        order.RefreshReadiness(nowUtc);
         return movements;
     }
 }

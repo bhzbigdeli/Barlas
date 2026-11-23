@@ -10,11 +10,11 @@ namespace Barlas.Domain.Production;
 public static class BundleSplitter
 {
     public static IReadOnlyList<Bundle> Split(ProductionPlan plan, int maxPairsPerBundle,
-        Func<Guid, IReadOnlyList<Guid>> routeStagesForModel)
+        Func<Guid, IReadOnlyList<Guid>> routeStagesForModel, DateTime nowUtc)
     {
         if (maxPairsPerBundle <= 0) throw new DomainException("تعداد جفت هر دسته باید مثبت باشد.");
 
-        plan.MarkReleased();
+        plan.MarkReleased(nowUtc);
         var bundles = new List<Bundle>();
         var groups = plan.Lines
             .GroupBy(l => (l.ShoeModelId, l.ColorId))

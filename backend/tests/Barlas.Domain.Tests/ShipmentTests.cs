@@ -17,7 +17,7 @@ public class ShipmentTests
         var line = order.AddLine(Model, Color, null, new Dictionary<int, int> { [40] = 10, [41] = 10 });
         var stock = new FreeStockItem(Unit, new SkuKey(Model, Color, 40));
         stock.Add(6);
-        FreeStockAllocator.Allocate(order, [stock]);
+        FreeStockAllocator.Allocate(order, [stock], Now);
         return (order, line);
     }
 
@@ -50,7 +50,7 @@ public class ShipmentTests
         var line = order.AddLine(Model, Color, null, new Dictionary<int, int> { [40] = 4 });
         var stock = new FreeStockItem(Unit, new SkuKey(Model, Color, 40));
         stock.Add(4);
-        FreeStockAllocator.Allocate(order, [stock]);
+        FreeStockAllocator.Allocate(order, [stock], Now);
 
         order.Ship("S1", [new ShipmentQuantity(line.Id, 40, 1)], Now);
         Assert.Equal(SalesOrderStatus.ReadyToShip, order.Status);   // باقیمانده آماده است

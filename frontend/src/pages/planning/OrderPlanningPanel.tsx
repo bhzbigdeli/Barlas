@@ -5,7 +5,9 @@ import { api, post } from "../../api/client";
 import { planStatusLabels, type OrderPlanning, type PlanDetail, type SalesOrderStatus } from "../../api/types";
 import { useAuth } from "../../auth/AuthContext";
 import { ErrorText } from "../../components/Field";
+import { JalaliDateInput } from "../../components/JalaliDateInput";
 import { formatNumber, toLatinDigits } from "../../lib/format";
+import { todayIso } from "../../lib/jalali";
 
 interface Qty {
   order: string;
@@ -25,6 +27,8 @@ export function OrderPlanningPanel({ orderId, status }: { orderId: string; statu
     queryFn: () => api<OrderPlanning>(`/orders/${orderId}/planning`),
   });
   const [qty, setQty] = useState<Record<string, Qty>>({});
+  const [start, setStart] = useState(todayIso());
+  const [end, setEnd] = useState("");
 
   useEffect(() => {
     if (!planning.data) return;
@@ -35,6 +39,8 @@ export function OrderPlanningPanel({ orderId, status }: { orderId: string; statu
     mutationFn: () =>
       post<PlanDetail>("/plans", {
         salesOrderId: orderId,
+        plannedStartDate: start || null,
+        plannedEndDate: end || null,
         lines: planning.data!.rows.map((r) => ({
           shoeModelId: r.shoeModelId,
           colorId: r.colorId,
@@ -152,6 +158,17 @@ export function OrderPlanningPanel({ orderId, status }: { orderId: string; statu
               </tbody>
             </table>
           </div>
+          <div className="grid-2">
+            <label>
+              شروع پیش‌بینی‌شده
+              <JalaliDateInput label="شروع پیش‌بینی‌شده" value={start} onChange={setStart} />
+            </label>
+            <label>
+              پایان پیش‌بینی‌شده (خالی: موعد سفارش)
+              <JalaliDateInput label="پایان پیش‌بینی‌شده" value={end} onChange={setEnd} />
+            </label>
+          </div>
+          <p className="muted">تاریخ پایان هر مرحله بین شروع و پایان پخش می‌شود و در صفحه زیربرنامه قابل ویرایش است.</p>
           <p>
             جمع: {formatNumber(totalOrder)} جفت سفارش + {formatNumber(totalSurplus)} جفت مازاد (
             <span className={ratio > surplusThreshold ? "error" : ""}>{formatNumber(Math.round(ratio * 100))}٪</span>)

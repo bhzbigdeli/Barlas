@@ -19,6 +19,37 @@ public class CatalogController(CatalogService catalog) : ControllerBase
     [HttpGet("products/{id:guid}")]
     public Task<ProductDto> Product(Guid id, CancellationToken ct) => catalog.GetProductAsync(id, ct);
 
+    [HttpGet("products/{id:guid}/overview")]
+    public Task<ProductOverview> ProductOverview(Guid id, CancellationToken ct) => catalog.GetProductOverviewAsync(id, ct);
+
+    [HttpGet("products/{id:guid}/image")]
+    public async Task<IActionResult> Image(Guid id, CancellationToken ct)
+    {
+        var image = await catalog.GetImageAsync(id, ct);
+        if (image is null) return NotFound();
+        Response.Headers.CacheControl = "private, max-age=86400";
+        return File(image.Data, image.ContentType);
+    }
+
+    [Authorize(Policy = Write)]
+    [HttpPut("products/{id:guid}/image")]
+    [RequestSizeLimit(3 * 1024 * 1024)]
+    public async Task<IActionResult> UploadImage(Guid id, IFormFile file, CancellationToken ct)
+    {
+        using var ms = new MemoryStream();
+        await file.CopyToAsync(ms, ct);
+        await catalog.SetImageAsync(id, file.ContentType, ms.ToArray(), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = Write)]
+    [HttpDelete("products/{id:guid}/image")]
+    public async Task<IActionResult> DeleteImage(Guid id, CancellationToken ct)
+    {
+        await catalog.DeleteImageAsync(id, ct);
+        return NoContent();
+    }
+
     [Authorize(Policy = Write)]
     [HttpPost("products")]
     public Task<ProductDto> CreateProduct(SaveProductRequest r, CancellationToken ct) => catalog.CreateProductAsync(r, ct);

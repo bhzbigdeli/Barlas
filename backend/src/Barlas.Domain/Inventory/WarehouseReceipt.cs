@@ -13,9 +13,9 @@ public static class WarehouseReceipt
 
     /// <param name="order">سفارش زیربرنامه این دسته (برای تولید انباری null).</param>
     /// <param name="freeStock">ردیف‌های موجودی آزاد موجود؛ ردیف‌های جدید با getOrCreate ساخته می‌شوند.</param>
-    public static Result Receive(Bundle bundle, SalesOrder? order, Func<SkuKey, FreeStockItem> getOrCreateFreeStock)
+    public static Result Receive(Bundle bundle, SalesOrder? order, Func<SkuKey, FreeStockItem> getOrCreateFreeStock, DateTime nowUtc)
     {
-        bundle.MarkInWarehouse();
+        bundle.MarkInWarehouse(nowUtc);
 
         var line = order?.Lines.FirstOrDefault(l => l.ShoeModelId == bundle.ShoeModelId && l.ColorId == bundle.ColorId);
         var movements = new List<StockMovement>();
@@ -41,7 +41,7 @@ public static class WarehouseReceipt
             }
         }
 
-        order?.RefreshReadiness();
+        order?.RefreshReadiness(nowUtc);
         return new Result(toOrder, toStock, movements);
     }
 }

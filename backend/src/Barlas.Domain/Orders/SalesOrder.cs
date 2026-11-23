@@ -39,6 +39,14 @@ public class SalesOrder : AuditableEntity, IUnitScoped
     public SalesOrderStatus Status { get; private set; } = SalesOrderStatus.Received;
     public IReadOnlyList<SalesOrderLine> Lines => _lines;
 
+    // ---- تاریخ واقعی هر قدم (تاریخ ورود = CreatedAtUtc، تاریخ تحویل پیش‌بینی‌شده = DueDate) ----
+    public DateTime? PlannedAtUtc { get; private set; }
+    public DateTime? InProductionAtUtc { get; private set; }
+    /// <summary>اولین باری که همه جفت‌ها در انبار آماده شدند.</summary>
+    public DateTime? ReadyAtUtc { get; private set; }
+    /// <summary>زمان ارسال آخرین جفت (ارسال کامل).</summary>
+    public DateTime? ShippedAtUtc { get; private set; }
+
     public int TotalPairs => _lines.Sum(l => l.TotalPairs);
     public int FulfilledPairs => _lines.Sum(l => l.Sizes.Sum(s => s.FromStock + s.FromProduction));
     public int ShippedPairs => _lines.Sum(l => l.Sizes.Sum(s => s.Shipped));
@@ -52,8 +60,17 @@ public class SalesOrder : AuditableEntity, IUnitScoped
         return line;
     }
 
-    public void MarkPlanned() => Transition(SalesOrderStatus.Received, SalesOrderStatus.Planned);
-    public void MarkInProduction() => Transition(SalesOrderStatus.Planned, SalesOrderStatus.InProduction);
+    public void MarkPlanned(DateTime nowUtc)
+    {
+        Transition(SalesOrderStatus.Received, SalesOrderStatus.Planned);
+        PlannedAtUtc = nowUtc;
+    }
+
+    public void MarkInProduction(DateTime nowUtc)
+    {
+        Transition(SalesOrderStatus.Planned, SalesOrderStatus.InProduction);
+        InProductionAtUtc = nowUtc;
+    }
 
     /// <summary>
     /// ارسال (کامل یا جزئی) به تهران: فقط جفت‌هایی که در انبار برای این سفارش آماده‌اند
@@ -78,18 +95,25 @@ public class SalesOrder : AuditableEntity, IUnitScoped
             shipment.AddLine(line.Id, q.Size, q.Quantity);
         }
 
-        if (_lines.All(l => l.Sizes.All(s => s.Shipped == s.Quantity))) Status = SalesOrderStatus.Shipped;
+        if (_lines.All(l => l.Sizes.All(s => s.Shipped == s.Quantity)))
+        {
+            Status = SalesOrderStatus.Shipped;
+            ShippedAtUtc = nowUtc;
+        }
         else if (_lines.All(l => l.Sizes.All(s => s.Outstanding == 0))) Status = SalesOrderStatus.ReadyToShip;
         else Status = SalesOrderStatus.PartiallyShipped;
         return shipment;
     }
 
     /// <summary>اگر همه سایزها تأمین شده باشند، سفارش «آماده ارسال» می‌شود.</summary>
-    public void RefreshReadiness()
+    public void RefreshReadiness(DateTime nowUtc)
     {
         if (Status is SalesOrderStatus.Shipped or SalesOrderStatus.Cancelled) return;
         if (_lines.All(l => l.Sizes.All(s => s.Outstanding == 0)))
+        {
             Status = SalesOrderStatus.ReadyToShip;
+            ReadyAtUtc ??= nowUtc;
+        }
     }
 
     public void Cancel()

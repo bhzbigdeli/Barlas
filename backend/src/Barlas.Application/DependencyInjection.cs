@@ -22,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<ScanService>();
         services.AddScoped<PlanningService>();
         services.AddScoped<WorkerService>();
+        services.AddScoped<Barlas.Application.Reports.ReportService>();
         return services;
     }
 }
