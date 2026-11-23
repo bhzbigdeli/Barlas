@@ -1,0 +1,16 @@
+# فقط دیتابیس برای توسعه محلی (API و فرانت با dotnet run و npm run dev اجرا می‌شوند).
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: "Barlas_Dev_123!"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqldata-dev:/var/opt/mssql
+
+volumes:
+  sqldata-dev:

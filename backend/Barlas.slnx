@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Barlas.Api/Barlas.Api.csproj" />
+    <Project Path="src/Barlas.Application/Barlas.Application.csproj" />
+    <Project Path="src/Barlas.Domain/Barlas.Domain.csproj" />
+    <Project Path="src/Barlas.Infrastructure/Barlas.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Barlas.Domain.Tests/Barlas.Domain.Tests.csproj" />
+  </Folder>
+</Solution>
