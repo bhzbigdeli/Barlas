@@ -156,3 +156,112 @@ export interface ProductionRoute {
   name: string;
   stages: string[];
 }
+
+// --- برنامه‌ریزی، دسته‌ها، انبار ---
+
+export type PlanStatus = "Draft" | "AwaitingApproval" | "Approved" | "Released" | "Completed" | "Cancelled";
+
+export const planStatusLabels: Record<PlanStatus, string> = {
+  Draft: "پیش‌نویس",
+  AwaitingApproval: "در انتظار تأیید مازاد",
+  Approved: "تأییدشده",
+  Released: "صادرشده (در تولید)",
+  Completed: "تکمیل‌شده",
+  Cancelled: "لغوشده",
+};
+
+export type BundleStatus = BundleState["status"];
+
+export const bundleStatusLabels: Record<BundleStatus, string> = {
+  Issued: "صادرشده",
+  InProgress: "در جریان",
+  Finished: "تمام‌شده",
+  InWarehouse: "در انبار",
+};
+
+export interface PlanningRow {
+  salesOrderLineId: string;
+  shoeModelId: string;
+  modelCode: string;
+  modelName: string;
+  colorId: string;
+  colorName: string;
+  size: number;
+  ordered: number;
+  fromStock: number;
+  alreadyPlanned: number;
+  unplanned: number;
+}
+
+export interface PlanSummary {
+  id: string;
+  number: string;
+  status: PlanStatus;
+  orderPairs: number;
+  surplusPairs: number;
+  bundleCount: number;
+}
+
+export interface OrderPlanning {
+  orderId: string;
+  externalNumber: string;
+  status: SalesOrderStatus;
+  surplusThreshold: number;
+  rows: PlanningRow[];
+  plans: PlanSummary[];
+}
+
+export interface PlanLine {
+  modelCode: string;
+  modelName: string;
+  colorName: string;
+  size: number;
+  orderQuantity: number;
+  surplusQuantity: number;
+}
+
+export interface Bundle {
+  id: string;
+  number: string;
+  qrToken: string;
+  modelCode: string;
+  modelName: string;
+  colorName: string;
+  sizes: SeriesSize[];
+  pairs: number;
+  status: BundleStatus;
+  lastStage: string | null;
+  nextStage: string | null;
+  route: string[];
+}
+
+export interface PlanDetail {
+  id: string;
+  number: string;
+  unitId: string;
+  unitName: string;
+  salesOrderId: string | null;
+  orderNumber: string | null;
+  status: PlanStatus;
+  surplusRatio: number;
+  surplusThreshold: number;
+  lines: PlanLine[];
+  bundles: Bundle[];
+}
+
+export interface ReceiveResult {
+  bundleNumber: string;
+  toOrder: number;
+  toFreeStock: number;
+  orderNumber: string | null;
+  orderStatus: SalesOrderStatus | null;
+}
+
+export interface FreeStockRow {
+  unitName: string;
+  modelCode: string;
+  modelName: string;
+  colorName: string;
+  size: number;
+  quantity: number;
+}

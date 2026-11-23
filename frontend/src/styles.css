@@ -482,3 +482,75 @@ td.wrap {
   background: var(--bg);
   border: 1px solid var(--border);
 }
+
+/* ---------- برنامه‌ریزی و کاردکس ---------- */
+
+input.qty {
+  width: 80px;
+  text-align: center;
+}
+
+.kardex-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.kardex {
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.6rem;
+  break-inside: avoid;
+}
+.kardex header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+.kardex header div {
+  display: grid;
+  align-content: start;
+}
+.kardex-title {
+  font-size: 1.1rem;
+}
+.kardex th,
+.kardex td {
+  text-align: center;
+  border: 1px solid var(--border);
+}
+.kardex-stages {
+  margin: 0;
+  padding-inline-start: 1.2rem;
+  display: grid;
+  gap: 0.3rem;
+}
+.kardex-stages li span {
+  display: inline-block;
+  min-width: 6rem;
+}
+
+@media print {
+  .sidebar,
+  .mobile-bar,
+  .no-print {
+    display: none !important;
+  }
+  .app {
+    display: block;
+  }
+  body {
+    background: #fff;
+    color: #000;
+  }
+  .kardex-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+bdi {
+  white-space: nowrap;
+}

@@ -13,6 +13,10 @@ import { LoginPage } from "./pages/LoginPage";
 import { OrderDetailPage } from "./pages/OrderDetailPage";
 import { OrdersPage } from "./pages/OrdersPage";
 import { ScanPage } from "./pages/ScanPage";
+import { KardexPage } from "./pages/planning/KardexPage";
+import { PlanPage } from "./pages/planning/PlanPage";
+import { PlansPage } from "./pages/planning/PlansPage";
+import { WarehousePage } from "./pages/WarehousePage";
 
 export function App() {
   const { user, loading } = useAuth();
@@ -26,6 +30,17 @@ export function App() {
         <Route index element={<DashboardPage />} />
         <Route path="orders" element={<OrdersPage />} />
         <Route path="orders/:id" element={<OrderDetailPage />} />
+        <Route path="plans" element={<PlansPage />} />
+        <Route path="plans/:id" element={<PlanPage />} />
+        <Route path="plans/:id/kardex" element={<KardexPage />} />
+        <Route
+          path="warehouse"
+          element={
+            <RequirePermission permission="ManageWarehouse">
+              <WarehousePage />
+            </RequirePermission>
+          }
+        />
         <Route
           path="scan"
           element={

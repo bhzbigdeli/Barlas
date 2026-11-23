@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router";
 import { api } from "../api/client";
 import { orderStatusLabels, type OrderDetail } from "../api/types";
 import { formatDate, formatNumber } from "../lib/format";
+import { OrderPlanningPanel } from "./planning/OrderPlanningPanel";
 
 export function OrderDetailPage() {
   const { id } = useParams();
@@ -53,6 +54,8 @@ export function OrderDetailPage() {
           </div>
         </div>
       ))}
+
+      <OrderPlanningPanel orderId={summary.id} status={summary.status} />
     </section>
   );
 }

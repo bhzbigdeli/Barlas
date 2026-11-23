@@ -21,7 +21,9 @@ const sections: NavSection[] = [
     items: [
       { to: "/", label: "داشبورد" },
       { to: "/orders", label: "سفارش‌ها" },
+      { to: "/plans", label: "زیربرنامه‌ها" },
       { to: "/scan", label: "اسکن کاردکس", permission: "ScanStages" },
+      { to: "/warehouse", label: "انبار محصول", permission: "ManageWarehouse" },
     ],
   },
   {
