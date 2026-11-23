@@ -24,8 +24,8 @@
 2. فایل `appsettings.Production.example.json` را با نام `appsettings.Production.json` کنار `Barlas.Api.exe`
    بگذارید و پر کنید:
    - `ConnectionStrings:Barlas`: نام سرور SQL (مثلاً `.` یا `.\SQLEXPRESS`) و رمز `barlas_app`.
-   - `Jwt:SigningKey`: یک رشته تصادفی حداقل ۳۲ کاراکتری. در PowerShell:
-     `-join ((48..57)+(65..90)+(97..122) | Get-Random -Count 48 | % {[char]$_})`
+   - `Jwt:SigningKey`: یک رشته تصادفی حداقل ۳۲ کاراکتری. در PowerShell سرور (خروجی ۶۴ کاراکتر):
+     `$b = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); -join ($b | % { $_.ToString("x2") })`
    - `Seed:AdminPassword`: رمز اولیه کاربر `admin` (حداقل ۸ کاراکتر، با حرف و عدد). بعد از اولین ورود عوضش کنید.
    - `Seed:MainSupplierCode` و `SandalSupplierCode`: کد تامین‌کننده هر واحد در سیستم فروش تهران.
    - `ReverseProxy:TrustForwardedHeaders`: فقط اگر سرور **فقط** از پشت CDN آروان در دسترس است `true` کنید.
