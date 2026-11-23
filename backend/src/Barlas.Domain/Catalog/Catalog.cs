@@ -86,14 +86,16 @@ public class ShoeModel : AuditableEntity
     private readonly List<SeriesSize> _series = [];
     private ShoeModel() { }
 
-    public ShoeModel(string code, string name, Guid routeId, Guid? soleId, IReadOnlyDictionary<int, int> series)
+    public ShoeModel(string code, string name, Guid routeId, Guid? soleId, IReadOnlyDictionary<int, int> series, string? group = null)
     {
         Code = CatalogRules.Code(code);
-        Update(name, routeId, soleId, series);
+        Update(name, routeId, soleId, series, group);
     }
 
     public string Code { get; private set; } = default!;
     public string Name { get; private set; } = default!;
+    /// <summary>گروه محصول در آنالیز بهای تمام‌شده (زنانه صنعتی، صندل اکو، …).</summary>
+    public string? Group { get; private set; }
     public Guid RouteId { get; private set; }
     public Guid? SoleId { get; private set; }
     public bool IsActive { get; private set; } = true;
@@ -104,9 +106,10 @@ public class ShoeModel : AuditableEntity
     public int? MinSeriesSize => _series.Count == 0 ? null : _series.Min(s => s.Size);
     public int? MaxSeriesSize => _series.Count == 0 ? null : _series.Max(s => s.Size);
 
-    public void Update(string name, Guid routeId, Guid? soleId, IReadOnlyDictionary<int, int> series)
+    public void Update(string name, Guid routeId, Guid? soleId, IReadOnlyDictionary<int, int> series, string? group = null)
     {
         Name = CatalogRules.Name(name);
+        Group = string.IsNullOrWhiteSpace(group) ? null : group.Trim();
         RouteId = routeId;
         SoleId = soleId;
         SetSeries(series);
@@ -114,12 +117,14 @@ public class ShoeModel : AuditableEntity
 
     public void SetActive(bool active) => IsActive = active;
 
-    /// <summary>سایزهای با تعداد صفر حذف می‌شوند؛ حداقل یک سایز لازم است.</summary>
+    /// <summary>
+    /// سایزهای با تعداد صفر حذف می‌شوند. سری خالی یعنی «هنوز تعریف نشده»: محصول ثبت می‌شود
+    /// ولی سفارش به‌صورت «تعداد سری» برایش باز نمی‌شود.
+    /// </summary>
     public void SetSeries(IReadOnlyDictionary<int, int> series)
     {
         if (series.Values.Any(q => q < 0)) throw new DomainException("تعداد سایز در سری نمی‌تواند منفی باشد.");
         var sizes = series.Where(kv => kv.Value > 0).ToList();
-        if (sizes.Count == 0) throw new DomainException("سری محصول باید حداقل یک سایز داشته باشد.");
         if (sizes.Any(kv => kv.Key is < MinSize or > MaxSize))
             throw new DomainException($"سایز باید بین {MinSize} و {MaxSize} باشد.");
 
@@ -138,6 +143,7 @@ public class ShoeModel : AuditableEntity
     public Dictionary<int, int> Expand(int seriesCount)
     {
         if (seriesCount <= 0) throw new DomainException("تعداد سری باید مثبت باشد.");
+        if (_series.Count == 0) throw new DomainException($"سری سایز محصول {Code} هنوز تعریف نشده است.");
         return _series.ToDictionary(s => s.Size, s => s.Quantity * seriesCount);
     }
 }

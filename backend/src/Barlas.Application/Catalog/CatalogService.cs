@@ -8,11 +8,15 @@ namespace Barlas.Application.Catalog;
 public sealed record SeriesSizeDto(int Size, int Quantity);
 
 public sealed record ProductDto(
-    Guid Id, string Code, string Name, Guid RouteId, string RouteName, Guid? SoleId, string? SoleName,
-    bool IsActive, IReadOnlyList<SeriesSizeDto> Series, int PairsPerSeries);
+    Guid Id, string Code, string Name, string? Group, Guid RouteId, string RouteName, Guid? SoleId, string? SoleName,
+    bool IsActive, IReadOnlyList<SeriesSizeDto> Series, int PairsPerSeries, IReadOnlyList<PieceRateDto> Rates);
+
+/// <summary>دستمزد کارمزدی یک مرحله برای یک جفت (ریال)، از تاریخ آنالیز.</summary>
+public sealed record PieceRateDto(string StageName, decimal RatePerPair, DateOnly EffectiveFrom);
 
 public sealed record SaveProductRequest(
-    string Code, string Name, Guid RouteId, Guid? SoleId, IReadOnlyList<SeriesSizeDto> Series, bool IsActive = true);
+    string Code, string Name, Guid RouteId, Guid? SoleId, IReadOnlyList<SeriesSizeDto> Series, bool IsActive = true,
+    string? Group = null);
 
 public sealed record CodedItemDto(Guid Id, string Code, string Name, bool IsActive);
 
@@ -37,7 +41,13 @@ public class CatalogService(IAppDbContext db)
         var model = await db.ShoeModels.AsNoTracking().Include(m => m.Series).FirstOrDefaultAsync(m => m.Id == id, ct)
             ?? throw AppException.NotFound("محصول");
         var (routes, soles) = await LookupsAsync(ct);
-        return ToDto(model, routes, soles);
+        var stages = await db.Stages.AsNoTracking().ToDictionaryAsync(x => x.Id, x => x.Name, ct);
+        var route = await db.Routes.AsNoTracking().Include(r => r.Steps).FirstOrDefaultAsync(r => r.Id == model.RouteId, ct);
+        var order = route?.Steps.ToDictionary(x => x.StageId, x => x.Sequence) ?? [];
+        var rates = (await db.PieceRates.AsNoTracking().Where(r => r.ShoeModelId == id).ToListAsync(ct))
+            .OrderBy(r => order.GetValueOrDefault(r.StageId, int.MaxValue)).ThenByDescending(r => r.EffectiveFrom)
+            .Select(r => new PieceRateDto(stages[r.StageId], r.RatePerPair, r.EffectiveFrom)).ToList();
+        return ToDto(model, routes, soles, rates);
     }
 
     public async Task<ProductDto> CreateProductAsync(SaveProductRequest request, CancellationToken ct)
@@ -47,7 +57,7 @@ public class CatalogService(IAppDbContext db)
             throw new AppException($"کد محصول «{code}» قبلاً تعریف شده است.", 409);
         await EnsureReferencesAsync(request, ct);
 
-        var model = new ShoeModel(code, request.Name, request.RouteId, request.SoleId, ToSeries(request.Series));
+        var model = new ShoeModel(code, request.Name, request.RouteId, request.SoleId, ToSeries(request.Series), request.Group);
         model.SetActive(request.IsActive);
         db.ShoeModels.Add(model);
         await db.SaveChangesAsync(ct);
@@ -62,7 +72,7 @@ public class CatalogService(IAppDbContext db)
         await EnsureReferencesAsync(request, ct);
 
         // سایز تازه در سری → Added، سایز حذف‌شده → Delete (شناسه‌ها ValueGeneratedNever‌اند).
-        model.Update(request.Name, request.RouteId, request.SoleId, ToSeries(request.Series));
+        model.Update(request.Name, request.RouteId, request.SoleId, ToSeries(request.Series), request.Group);
         model.SetActive(request.IsActive);
         await db.SaveChangesAsync(ct);
         return await GetProductAsync(id, ct);
@@ -83,10 +93,11 @@ public class CatalogService(IAppDbContext db)
         (await db.Routes.AsNoTracking().ToDictionaryAsync(r => r.Id, r => r.Name, ct),
          await db.Soles.AsNoTracking().ToDictionaryAsync(s => s.Id, s => s.Name, ct));
 
-    private static ProductDto ToDto(ShoeModel m, IReadOnlyDictionary<Guid, string> routes, IReadOnlyDictionary<Guid, string> soles) =>
-        new(m.Id, m.Code, m.Name, m.RouteId, routes.GetValueOrDefault(m.RouteId, "?"),
+    private static ProductDto ToDto(ShoeModel m, IReadOnlyDictionary<Guid, string> routes, IReadOnlyDictionary<Guid, string> soles,
+        IReadOnlyList<PieceRateDto>? rates = null) =>
+        new(m.Id, m.Code, m.Name, m.Group, m.RouteId, routes.GetValueOrDefault(m.RouteId, "?"),
             m.SoleId, m.SoleId is { } s ? soles.GetValueOrDefault(s) : null, m.IsActive,
-            m.Series.Select(x => new SeriesSizeDto(x.Size, x.Quantity)).ToList(), m.PairsPerSeries);
+            m.Series.Select(x => new SeriesSizeDto(x.Size, x.Quantity)).ToList(), m.PairsPerSeries, rates ?? []);
 
     // ---------- رنگ و زیره ----------
 

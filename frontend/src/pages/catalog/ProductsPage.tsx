@@ -29,6 +29,7 @@ export function ProductsPage() {
             <tr>
               <th>کد</th>
               <th>نام</th>
+              <th>گروه</th>
               <th>سری (سایز × تعداد)</th>
               <th>جفت در سری</th>
               <th>زیره</th>
@@ -42,7 +43,9 @@ export function ProductsPage() {
                   <Link to={`/catalog/products/${p.id}`}>{p.code}</Link>
                 </td>
                 <td>{p.name}</td>
+                <td>{p.group ?? "—"}</td>
                 <td>
+                  {p.series.length === 0 && <span className="warn">تعریف نشده</span>}
                   <div className="series-chips">
                     {p.series.map((s) => (
                       <span key={s.size} className="chip" title={`سایز ${s.size}: ${s.quantity} جفت در هر سری`}>
@@ -58,7 +61,7 @@ export function ProductsPage() {
             ))}
             {products.data?.length === 0 && (
               <tr>
-                <td colSpan={6} className="muted">
+                <td colSpan={7} className="muted">
                   هنوز محصولی تعریف نشده.
                 </td>
               </tr>

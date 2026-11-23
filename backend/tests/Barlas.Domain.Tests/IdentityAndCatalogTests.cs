@@ -79,6 +79,10 @@ public class ProductSeriesTests
         Assert.Throws<DomainException>(() => Product(new() { [size] = qty }));
 
     [Fact]
-    public void Series_needs_at_least_one_size() =>
-        Assert.Throws<DomainException>(() => Product(new() { [40] = 0 }));
+    public void Empty_series_means_not_defined_yet()
+    {
+        var model = Product(new() { [40] = 0 });
+        Assert.Empty(model.Series);
+        Assert.Throws<DomainException>(() => model.Expand(1));
+    }
 }

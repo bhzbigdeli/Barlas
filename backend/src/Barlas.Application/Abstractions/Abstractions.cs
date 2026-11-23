@@ -28,6 +28,7 @@ public interface IAppDbContext
     DbSet<PieceRate> PieceRates { get; }
 
     DbSet<SalesOrder> SalesOrders { get; }
+    DbSet<Shipment> Shipments { get; }
     DbSet<FreeStockItem> FreeStock { get; }
     DbSet<StockMovement> StockMovements { get; }
     DbSet<ProductionPlan> Plans { get; }

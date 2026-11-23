@@ -3,7 +3,9 @@ using Barlas.Domain.Catalog;
 using Barlas.Domain.Identity;
 using Barlas.Domain.Organization;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Barlas.Infrastructure.Persistence;
 
@@ -12,11 +14,11 @@ namespace Barlas.Infrastructure.Persistence;
 /// کدهای تامین‌کننده موقت‌اند و باید با کدهای واقعی سیستم فروش تهران جایگزین شوند.
 /// سطوح دسترسی پیش‌فرض فقط بار اول ساخته می‌شوند و بعد از آن در برنامه قابل تغییرند.
 /// </summary>
-public class DbSeeder(AppDbContext db, IPasswordHasher hasher, IConfiguration config)
+public class DbSeeder(AppDbContext db, IPasswordHasher hasher, IConfiguration config, ILogger<DbSeeder> logger)
 {
     public const string OwnerRoleName = "مالک";
 
-    public async Task SeedAsync(bool includeSampleData, CancellationToken ct = default)
+    public async Task SeedAsync(CancellationToken ct = default)
     {
         await db.Database.MigrateAsync(ct);
 
@@ -25,23 +27,6 @@ public class DbSeeder(AppDbContext db, IPasswordHasher hasher, IConfiguration co
             db.Units.AddRange(
                 new ProductionUnit("MAIN", "واحد اصلی", config["Seed:MainSupplierCode"] ?? "SUP-MAIN"),
                 new ProductionUnit("SANDAL", "سالن صندل", config["Seed:SandalSupplierCode"] ?? "SUP-SANDAL"));
-        }
-
-        if (!await db.Stages.AnyAsync(ct))
-        {
-            var stages = new[]
-            {
-                new ProductionStage("CUT", "برش"),
-                new ProductionStage("LASER", "لیزر"),
-                new ProductionStage("UPPER", "پستاسازی"),
-                new ProductionStage("LAST", "کفاشی"),
-                new ProductionStage("PACK", "بسته‌بندی"),
-            };
-            db.Stages.AddRange(stages);
-
-            var route = new ProductionRoute("مسیر استاندارد");
-            foreach (var s in stages) route.AddStep(s.Id);
-            db.Routes.Add(route);
         }
 
         if (!await db.Roles.AnyAsync(ct)) db.Roles.AddRange(DefaultRoles());
@@ -61,7 +46,7 @@ public class DbSeeder(AppDbContext db, IPasswordHasher hasher, IConfiguration co
             await db.SaveChangesAsync(ct);
         }
 
-        if (includeSampleData) await SeedSamplesAsync(ct);
+        await SeedCatalogAsync(ct);
     }
 
     private static IEnumerable<Role> DefaultRoles()
@@ -78,28 +63,68 @@ public class DbSeeder(AppDbContext db, IPasswordHasher hasher, IConfiguration co
         yield return new Role("اپراتور اسکن", [Permission.ScanStages]);
     }
 
-    /// <summary>نمونه برای توسعه: سه محصول با سری‌های متفاوت، رنگ، زیره و دو کارگر در واحد اصلی.</summary>
-    private async Task SeedSamplesAsync(CancellationToken ct)
+    /// <summary>
+    /// اطلاعات پایه واقعی (مراحل، مسیرها، زیره‌ها، محصولات و نرخ دستمزد هر مرحله) از فایل
+    /// <c>Seed:CatalogFile</c> که از «آنالیز ۱۴۰۵» ساخته شده؛ فقط وقتی هنوز محصولی ثبت نشده.
+    /// فایل در مخزن نیست (اطلاعات محرمانه کارخانه).
+    /// </summary>
+    private async Task SeedCatalogAsync(CancellationToken ct)
     {
         if (await db.ShoeModels.AnyAsync(ct)) return;
 
-        var main = await db.Units.IgnoreQueryFilters().FirstAsync(u => u.Code == "MAIN", ct);
-        var route = await db.Routes.FirstAsync(ct);
+        var path = config["Seed:CatalogFile"] ?? "SeedData/catalog.json";
+        if (!Path.IsPathRooted(path)) path = Path.Combine(AppContext.BaseDirectory, path);
+        if (!File.Exists(path))
+        {
+            logger.LogWarning("فایل اطلاعات پایه پیدا نشد ({Path}); محصولی ساخته نشد.", path);
+            return;
+        }
 
-        db.Colors.AddRange(new Color("BLK", "مشکی"), new Color("BRN", "قهوه‌ای"), new Color("WHT", "سفید"));
-        var sole = new Sole("PU-1", "زیره پی‌یو ۱");
-        db.Soles.Add(sole);
+        var seed = JsonSerializer.Deserialize<CatalogSeed>(await File.ReadAllTextAsync(path, ct), JsonOptions)
+            ?? throw new InvalidOperationException("فایل اطلاعات پایه خالی است.");
 
-        // سری‌ها عمداً متفاوت‌اند: بازه سایز و تعداد هر سایز محصول به محصول فرق دارد.
-        db.ShoeModels.AddRange(
-            new ShoeModel("M-100", "مردانه کلاسیک", route.Id, sole.Id,
-                new Dictionary<int, int> { [40] = 1, [41] = 2, [42] = 2, [43] = 2, [44] = 1, [45] = 1 }),
-            new ShoeModel("W-200", "زنانه روزمره", route.Id, null,
-                new Dictionary<int, int> { [36] = 1, [37] = 2, [38] = 2, [39] = 2, [40] = 1 }),
-            new ShoeModel("S-300", "صندل اسپرت", route.Id, null,
-                new Dictionary<int, int> { [37] = 1, [38] = 1, [39] = 2, [40] = 2, [41] = 2, [42] = 1 }));
+        var stages = (await db.Stages.ToListAsync(ct)).ToDictionary(s => s.Code);
+        foreach (var s in seed.Stages.Where(s => !stages.ContainsKey(s.Code)))
+        {
+            stages[s.Code] = new ProductionStage(s.Code, s.Name);
+            db.Stages.Add(stages[s.Code]);
+        }
 
-        db.Workers.AddRange(new Worker(main.Id, "1001", "کارگر نمونه ۱"), new Worker(main.Id, "1002", "کارگر نمونه ۲"));
+        var routes = (await db.Routes.Include(r => r.Steps).ToListAsync(ct)).ToDictionary(r => r.Name);
+        foreach (var r in seed.Routes.Where(r => !routes.ContainsKey(r.Name)))
+        {
+            var route = new ProductionRoute(r.Name);
+            foreach (var code in r.Stages) route.AddStep(stages[code].Id);
+            routes[r.Name] = route;
+            db.Routes.Add(route);
+        }
+
+        var soles = (await db.Soles.ToListAsync(ct)).ToDictionary(s => s.Code);
+        foreach (var s in seed.Soles.Where(s => !soles.ContainsKey(s.Code)))
+        {
+            soles[s.Code] = new Sole(s.Code, s.Name);
+            db.Soles.Add(soles[s.Code]);
+        }
+
+        foreach (var m in seed.Models)
+        {
+            // سری سایز در آنالیز نیست؛ محصول با سری خالی ثبت می‌شود تا از صفحه محصول تکمیل شود.
+            var model = new ShoeModel(m.Code, m.Name, routes[m.Route].Id, m.Sole is null ? null : soles[m.Sole].Id,
+                new Dictionary<int, int>(), m.Group);
+            db.ShoeModels.Add(model);
+            foreach (var st in m.Stages)
+                db.PieceRates.Add(new PieceRate(stages[st.Stage].Id, model.Id, st.Rate, m.AnalysisDate));
+        }
+
         await db.SaveChangesAsync(ct);
+        logger.LogInformation("اطلاعات پایه از {Source}: {Models} محصول، {Routes} مسیر.", seed.Source, seed.Models.Count, seed.Routes.Count);
     }
+
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
+    private sealed record CatalogSeed(string Source, List<CodeName> Stages, List<CodeName> Soles, List<RouteSeed> Routes, List<ModelSeed> Models);
+    private sealed record CodeName(string Code, string Name);
+    private sealed record RouteSeed(string Name, List<string> Stages);
+    private sealed record ModelSeed(string Code, string Name, string Group, DateOnly AnalysisDate, string? Sole, string Route, List<StageRate> Stages);
+    private sealed record StageRate(string Stage, decimal Rate);
 }

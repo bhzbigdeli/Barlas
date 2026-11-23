@@ -554,3 +554,16 @@ input.qty {
 bdi {
   white-space: nowrap;
 }
+
+.warn {
+  color: #b54708;
+}
+@media (prefers-color-scheme: dark) {
+  .warn {
+    color: #fdb022;
+  }
+}
+.inline-form select {
+  flex: 0 1 160px;
+  width: auto;
+}

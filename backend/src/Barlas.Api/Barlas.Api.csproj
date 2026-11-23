@@ -20,4 +20,9 @@
     <ProjectReference Include="..\Barlas.Infrastructure\Barlas.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- اطلاعات پایه واقعی کارخانه؛ در مخزن نیست (gitignore) -->
+    <None Include="SeedData\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

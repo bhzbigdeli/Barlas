@@ -38,6 +38,12 @@ public sealed record ReceiveRequest(string QrToken);
 
 public sealed record ReceiveResult(string BundleNumber, int ToOrder, int ToFreeStock, string? OrderNumber, SalesOrderStatus? OrderStatus);
 
+public sealed record ShipLine(Guid SalesOrderLineId, int Size, int Quantity);
+
+public sealed record ShipRequest(IReadOnlyList<ShipLine> Lines);
+
+public sealed record ShipmentDto(Guid Id, string Number, DateTime ShippedAtUtc, int Pairs);
+
 public sealed record FreeStockRow(string UnitName, string ModelCode, string ModelName, string ColorName, int Size, int Quantity);
 
 /// <summary>
@@ -206,12 +212,17 @@ public class PlanningService(IAppDbContext db, ICurrentUser user, IClock clock)
         return new ReceiveResult(bundle.Number, result.ToOrder, result.ToFreeStock, order?.ExternalNumber, order?.Status);
     }
 
-    public async Task ShipAsync(Guid orderId, CancellationToken ct)
+    /// <summary>ارسال کامل یا جزئی: هر سایز حداکثر به اندازه «آماده ارسال» خودش.</summary>
+    public async Task<ShipmentDto> ShipAsync(Guid orderId, ShipRequest request, CancellationToken ct)
     {
-        var order = await db.SalesOrders.FirstOrDefaultAsync(o => o.Id == orderId, ct) ?? throw AppException.NotFound("سفارش");
-        if (order.Status != SalesOrderStatus.ReadyToShip) throw new AppException("سفارش هنوز آماده ارسال نیست.");
-        order.MarkShipped();
+        var order = await db.SalesOrders.Include(o => o.Lines).ThenInclude(l => l.Sizes)
+            .FirstOrDefaultAsync(o => o.Id == orderId, ct) ?? throw AppException.NotFound("سفارش");
+        var count = await db.Shipments.CountAsync(s => s.SalesOrderId == orderId, ct);
+        var shipment = order.Ship($"{order.ExternalNumber}-S{count + 1}",
+            request.Lines.Select(l => new ShipmentQuantity(l.SalesOrderLineId, l.Size, l.Quantity)).ToList(), clock.UtcNow);
+        db.Shipments.Add(shipment);
         await db.SaveChangesAsync(ct);
+        return new ShipmentDto(shipment.Id, shipment.Number, shipment.ShippedAtUtc, shipment.TotalPairs);
     }
 
     public async Task<IReadOnlyList<FreeStockRow>> ListFreeStockAsync(CancellationToken ct)

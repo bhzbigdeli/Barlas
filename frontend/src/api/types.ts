@@ -35,7 +35,14 @@ export interface Unit {
   name: string;
 }
 
-export type SalesOrderStatus = "Received" | "Planned" | "InProduction" | "ReadyToShip" | "Shipped" | "Cancelled";
+export type SalesOrderStatus =
+  | "Received"
+  | "Planned"
+  | "InProduction"
+  | "ReadyToShip"
+  | "Shipped"
+  | "PartiallyShipped"
+  | "Cancelled";
 
 export const orderStatusLabels: Record<SalesOrderStatus, string> = {
   Received: "دریافت‌شده",
@@ -43,6 +50,7 @@ export const orderStatusLabels: Record<SalesOrderStatus, string> = {
   InProduction: "در تولید",
   ReadyToShip: "آماده ارسال",
   Shipped: "ارسال‌شده",
+  PartiallyShipped: "ارسال جزئی",
   Cancelled: "لغوشده",
 };
 
@@ -57,6 +65,7 @@ export interface OrderSummary {
   status: SalesOrderStatus;
   totalPairs: number;
   fulfilledPairs: number;
+  shippedPairs: number;
 }
 
 export interface OrderLineSize {
@@ -65,9 +74,12 @@ export interface OrderLineSize {
   fromStock: number;
   fromProduction: number;
   outstanding: number;
+  shipped: number;
+  readyToShip: number;
 }
 
 export interface OrderLine {
+  id: string;
   lineNumber: number;
   modelCode: string;
   modelName: string;
@@ -75,9 +87,16 @@ export interface OrderLine {
   sizes: OrderLineSize[];
 }
 
+export interface OrderShipment {
+  number: string;
+  shippedAtUtc: string;
+  pairs: number;
+}
+
 export interface OrderDetail {
   summary: OrderSummary;
   lines: OrderLine[];
+  shipments: OrderShipment[];
 }
 
 export interface IntakeResult {
@@ -131,10 +150,17 @@ export interface SeriesSize {
   quantity: number;
 }
 
+export interface PieceRate {
+  stageName: string;
+  ratePerPair: number;
+  effectiveFrom: string;
+}
+
 export interface Product {
   id: string;
   code: string;
   name: string;
+  group: string | null;
   routeId: string;
   routeName: string;
   soleId: string | null;
@@ -142,6 +168,7 @@ export interface Product {
   isActive: boolean;
   series: SeriesSize[];
   pairsPerSeries: number;
+  rates: PieceRate[];
 }
 
 export interface CodedItem {
@@ -264,4 +291,13 @@ export interface FreeStockRow {
   colorName: string;
   size: number;
   quantity: number;
+}
+
+export interface Worker {
+  id: string;
+  unitId: string;
+  unitName: string;
+  personnelCode: string;
+  fullName: string;
+  isActive: boolean;
 }

@@ -4,6 +4,7 @@ const dateFmt = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
+  timeZone: "Asia/Tehran", // روز کاری کارخانه، مستقل از ساعت دستگاه
 });
 
 const numberFmt = new Intl.NumberFormat("fa-IR");
@@ -12,7 +13,9 @@ const numberFmt = new Intl.NumberFormat("fa-IR");
 export function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
   // DateOnly بدون ساعت می‌آید؛ ظهر UTC تا جابه‌جایی منطقه زمانی روز را عوض نکند.
-  const d = new Date(value.length === 10 ? `${value}T12:00:00Z` : value);
+  // زمان‌های ذخیره‌شده UTC‌اند ولی از دیتابیس گاهی بدون Z می‌آیند؛ بدون Z مرورگر آن را محلی می‌خواند.
+  const iso = value.length === 10 ? `${value}T12:00:00Z` : /[zZ]|[+-]\d\d:?\d\d$/.test(value) ? value : `${value}Z`;
+  const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "—" : dateFmt.format(d);
 }
 

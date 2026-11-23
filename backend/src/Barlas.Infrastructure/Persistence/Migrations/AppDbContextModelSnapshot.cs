@@ -223,6 +223,10 @@ namespace Barlas.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Group")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -577,6 +581,9 @@ namespace Barlas.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("SalesOrderLineId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("Shipped")
+                        .HasColumnType("int");
+
                     b.Property<int>("Size")
                         .HasColumnType("int");
 
@@ -586,6 +593,73 @@ namespace Barlas.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("SalesOrderLineSizes");
+                });
+
+            modelBuilder.Entity("Barlas.Domain.Orders.Shipment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<Guid>("SalesOrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ShippedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UnitId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SalesOrderId");
+
+                    b.HasIndex("UnitId", "Number")
+                        .IsUnique();
+
+                    b.ToTable("Shipments");
+                });
+
+            modelBuilder.Entity("Barlas.Domain.Orders.ShipmentLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SalesOrderLineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ShipmentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Size")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SalesOrderLineId");
+
+                    b.HasIndex("ShipmentId");
+
+                    b.ToTable("ShipmentLines");
                 });
 
             modelBuilder.Entity("Barlas.Domain.Organization.ProductionUnit", b =>
@@ -1027,6 +1101,36 @@ namespace Barlas.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Barlas.Domain.Orders.Shipment", b =>
+                {
+                    b.HasOne("Barlas.Domain.Orders.SalesOrder", null)
+                        .WithMany()
+                        .HasForeignKey("SalesOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Barlas.Domain.Organization.ProductionUnit", null)
+                        .WithMany()
+                        .HasForeignKey("UnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Barlas.Domain.Orders.ShipmentLine", b =>
+                {
+                    b.HasOne("Barlas.Domain.Orders.SalesOrderLine", null)
+                        .WithMany()
+                        .HasForeignKey("SalesOrderLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Barlas.Domain.Orders.Shipment", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("ShipmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Barlas.Domain.Organization.Worker", b =>
                 {
                     b.HasOne("Barlas.Domain.Organization.ProductionUnit", null)
@@ -1122,6 +1226,11 @@ namespace Barlas.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Barlas.Domain.Orders.SalesOrderLine", b =>
                 {
                     b.Navigation("Sizes");
+                });
+
+            modelBuilder.Entity("Barlas.Domain.Orders.Shipment", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("Barlas.Domain.Planning.ProductionPlan", b =>

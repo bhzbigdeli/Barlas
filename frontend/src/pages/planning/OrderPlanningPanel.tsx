@@ -49,11 +49,6 @@ export function OrderPlanningPanel({ orderId, status }: { orderId: string; statu
     },
   });
 
-  const ship = useMutation({
-    mutationFn: () => post<void>(`/orders/${orderId}/ship`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["orders"] }),
-  });
-
   if (!planning.data) return <ErrorText error={planning.error} />;
   const { rows, plans, surplusThreshold } = planning.data;
   const totalUnplanned = rows.reduce((s, r) => s + r.unplanned, 0);
@@ -170,19 +165,6 @@ export function OrderPlanningPanel({ orderId, status }: { orderId: string; statu
         </form>
       )}
 
-      {status === "ReadyToShip" && can("ManageWarehouse") && (
-        <div className="card">
-          <h3>ارسال به تهران</h3>
-          <p className="muted">همه سایزهای این سفارش کامل شده است.</p>
-          <ErrorText error={ship.error} />
-          <div className="actions">
-            <button onClick={() => ship.mutate()} disabled={ship.isPending}>
-              ثبت ارسال سفارش
-            </button>
-          </div>
-        </div>
-      )}
-      {status === "Shipped" && <p className="ok">این سفارش به تهران ارسال شده است.</p>}
     </>
   );
 }

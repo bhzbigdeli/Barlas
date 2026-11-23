@@ -4,6 +4,7 @@ import { Layout } from "./components/Layout";
 import { RequirePermission } from "./components/RequirePermission";
 import { RolesPage } from "./pages/admin/RolesPage";
 import { UsersPage } from "./pages/admin/UsersPage";
+import { WorkersPage } from "./pages/admin/WorkersPage";
 import { BasicDataPage } from "./pages/catalog/BasicDataPage";
 import { ProductEditPage } from "./pages/catalog/ProductEditPage";
 import { ProductsPage } from "./pages/catalog/ProductsPage";
@@ -75,6 +76,14 @@ export function App() {
           element={
             <RequirePermission permission="ManageUsers">
               <RolesPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="admin/workers"
+          element={
+            <RequirePermission permission="ManageUsers">
+              <WorkersPage />
             </RequirePermission>
           }
         />

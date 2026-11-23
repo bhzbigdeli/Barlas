@@ -38,6 +38,7 @@ const sections: NavSection[] = [
     items: [
       { to: "/admin/users", label: "کاربران", permission: "ManageUsers" },
       { to: "/admin/roles", label: "سطوح دسترسی", permission: "ManageUsers" },
+      { to: "/admin/workers", label: "کارگران", permission: "ManageUsers" },
     ],
   },
 ];

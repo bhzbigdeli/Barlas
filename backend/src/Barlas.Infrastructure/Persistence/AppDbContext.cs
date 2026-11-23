@@ -26,6 +26,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUser c
     public DbSet<ShoeModel> ShoeModels => Set<ShoeModel>();
     public DbSet<PieceRate> PieceRates => Set<PieceRate>();
     public DbSet<SalesOrder> SalesOrders => Set<SalesOrder>();
+    public DbSet<Shipment> Shipments => Set<Shipment>();
     public DbSet<FreeStockItem> FreeStock => Set<FreeStockItem>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<ProductionPlan> Plans => Set<ProductionPlan>();

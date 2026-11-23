@@ -17,3 +17,6 @@ dist/
 .vscode/*
 !.vscode/extensions.json
 *.tsbuildinfo
+
+# اطلاعات محرمانه کارخانه (آنالیز، نرخ دستمزد)
+backend/src/Barlas.Api/SeedData/

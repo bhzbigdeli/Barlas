@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import { orderStatusLabels, type OrderDetail } from "../api/types";
 import { formatDate, formatNumber } from "../lib/format";
 import { OrderPlanningPanel } from "./planning/OrderPlanningPanel";
+import { ShipmentPanel } from "./planning/ShipmentPanel";
 
 export function OrderDetailPage() {
   const { id } = useParams();
@@ -37,6 +38,7 @@ export function OrderDetailPage() {
                   <th>از موجودی آزاد</th>
                   <th>از تولید</th>
                   <th>باقیمانده</th>
+                  <th>ارسال‌شده</th>
                 </tr>
               </thead>
               <tbody>
@@ -47,6 +49,7 @@ export function OrderDetailPage() {
                     <td>{formatNumber(s.fromStock)}</td>
                     <td>{formatNumber(s.fromProduction)}</td>
                     <td>{formatNumber(s.outstanding)}</td>
+                    <td>{formatNumber(s.shipped)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -56,6 +59,7 @@ export function OrderDetailPage() {
       ))}
 
       <OrderPlanningPanel orderId={summary.id} status={summary.status} />
+      <ShipmentPanel order={order.data} />
     </section>
   );
 }

@@ -2,6 +2,7 @@ using Barlas.Application.Admin;
 using Barlas.Application.Auth;
 using Barlas.Application.Catalog;
 using Barlas.Application.Orders;
+using Barlas.Application.Organization;
 using Barlas.Application.Planning;
 using Barlas.Application.Production;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<OrderQueries>();
         services.AddScoped<ScanService>();
         services.AddScoped<PlanningService>();
+        services.AddScoped<WorkerService>();
         return services;
     }
 }

@@ -42,12 +42,8 @@ public class PlanningController(PlanningService planning) : ControllerBase
     [HttpGet("warehouse/free-stock")]
     public Task<IReadOnlyList<FreeStockRow>> FreeStock(CancellationToken ct) => planning.ListFreeStockAsync(ct);
 
-    /// <summary>ارسال سفارش کامل به تهران.</summary>
+    /// <summary>ارسال (کامل یا جزئی) سفارش به تهران.</summary>
     [Authorize(Policy = nameof(Permission.ManageWarehouse))]
-    [HttpPost("orders/{id:guid}/ship")]
-    public async Task<IActionResult> Ship(Guid id, CancellationToken ct)
-    {
-        await planning.ShipAsync(id, ct);
-        return NoContent();
-    }
+    [HttpPost("orders/{id:guid}/shipments")]
+    public Task<ShipmentDto> Ship(Guid id, ShipRequest request, CancellationToken ct) => planning.ShipAsync(id, request, ct);
 }

@@ -82,7 +82,7 @@ app.MapHealthChecks("/health");
 if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
 {
     using var scope = app.Services.CreateScope();
-    await scope.ServiceProvider.GetRequiredService<DbSeeder>().SeedAsync(app.Environment.IsDevelopment());
+    await scope.ServiceProvider.GetRequiredService<DbSeeder>().SeedAsync();
 }
 
 app.Run();

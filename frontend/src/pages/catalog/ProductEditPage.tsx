@@ -5,11 +5,13 @@ import { api, post, put } from "../../api/client";
 import type { CodedItem, Product, ProductionRoute, SeriesSize } from "../../api/types";
 import { useAuth } from "../../auth/AuthContext";
 import { ErrorText, Field } from "../../components/Field";
+import { formatDate, formatNumber } from "../../lib/format";
 import { SeriesEditor } from "./SeriesEditor";
 
 interface Draft {
   code: string;
   name: string;
+  group: string;
   routeId: string;
   soleId: string;
   isActive: boolean;
@@ -33,16 +35,16 @@ export function ProductEditPage() {
 
   useEffect(() => {
     if (isNew && routes.data && !draft)
-      setDraft({ code: "", name: "", routeId: routes.data[0]?.id ?? "", soleId: "", isActive: true, series: [] });
+      setDraft({ code: "", name: "", group: "", routeId: routes.data[0]?.id ?? "", soleId: "", isActive: true, series: [] });
     if (!isNew && product.data && !draft) {
       const p = product.data;
-      setDraft({ code: p.code, name: p.name, routeId: p.routeId, soleId: p.soleId ?? "", isActive: p.isActive, series: p.series });
+      setDraft({ code: p.code, name: p.name, group: p.group ?? "", routeId: p.routeId, soleId: p.soleId ?? "", isActive: p.isActive, series: p.series });
     }
   }, [isNew, routes.data, product.data, draft]);
 
   const save = useMutation({
     mutationFn: (d: Draft) => {
-      const body = { ...d, soleId: d.soleId || null, series: d.series.filter((s) => s.quantity > 0) };
+      const body = { ...d, soleId: d.soleId || null, group: d.group || null, series: d.series.filter((s) => s.quantity > 0) };
       return isNew ? post<Product>("/catalog/products", body) : put<Product>(`/catalog/products/${id}`, body);
     },
     onSuccess: async () => {
@@ -78,6 +80,9 @@ export function ProductEditPage() {
           <Field label="نام محصول">
             <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} disabled={readOnly} required />
           </Field>
+          <Field label="گروه" hint="مثل زنانه صنعتی، صندل اکو (طبق آنالیز بهای تمام‌شده)">
+            <input value={draft.group} onChange={(e) => setDraft({ ...draft, group: e.target.value })} disabled={readOnly} />
+          </Field>
           <Field label="مسیر مراحل تولید">
             <select value={draft.routeId} onChange={(e) => setDraft({ ...draft, routeId: e.target.value })} disabled={readOnly} required>
               {routes.data?.map((r) => (
@@ -103,6 +108,9 @@ export function ProductEditPage() {
 
         <fieldset>
           <legend>سری سایز</legend>
+          {draft.series.length === 0 && (
+            <p className="warn">سری سایز این محصول هنوز تعریف نشده؛ تا تعریف نشود سفارش «تعداد سری» برایش باز نمی‌شود.</p>
+          )}
           <SeriesEditor value={draft.series} onChange={(series) => setDraft({ ...draft, series })} disabled={readOnly} />
         </fieldset>
 
@@ -116,10 +124,43 @@ export function ProductEditPage() {
           <span>فعال (در سفارش‌ها و برنامه‌ریزی قابل استفاده است)</span>
         </label>
 
+        {product.data && product.data.rates.length > 0 && (
+          <fieldset>
+            <legend>دستمزد کارمزدی هر مرحله (ریال برای هر جفت)</legend>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>مرحله</th>
+                    <th>دستمزد</th>
+                    <th>از تاریخ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {product.data.rates.map((r) => (
+                    <tr key={r.stageName + r.effectiveFrom}>
+                      <td>{r.stageName}</td>
+                      <td>{formatNumber(r.ratePerPair)}</td>
+                      <td>{formatDate(r.effectiveFrom)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <th>جمع</th>
+                    <th>{formatNumber(product.data.rates.reduce((s, r) => s + r.ratePerPair, 0))}</th>
+                    <th />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </fieldset>
+        )}
+
         <ErrorText error={save.error} />
         {!readOnly && (
           <div className="actions">
-            <button type="submit" disabled={save.isPending || draft.series.every((s) => !s.quantity)}>
+            <button type="submit" disabled={save.isPending}>
               ذخیره
             </button>
             <Link className="button secondary" to="/catalog/products">
