@@ -7,6 +7,7 @@ using Barlas.Application.Abstractions;
 using Barlas.Infrastructure;
 using Barlas.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -62,9 +63,31 @@ var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
     p.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod()));
 
+// پشت CDN آروان یا پراکسی دیگر: IP واقعی کاربر از X-Forwarded-For (برای محدودیت تلاش ورود).
+// فقط وقتی روشن شود که سرور مستقیم از اینترنت در دسترس نیست، وگرنه سربرگ قابل جعل است.
+var trustForwarded = builder.Configuration.GetValue("ReverseProxy:TrustForwardedHeaders", false);
+if (trustForwarded)
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(o =>
+    {
+        o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        o.KnownIPNetworks.Clear();
+        o.KnownProxies.Clear();
+    });
+}
+
 var app = builder.Build();
 
+if (trustForwarded) app.UseForwardedHeaders();
 app.UseExceptionHandler();
+
+// صفحه‌های وب (خروجی build فرانت در wwwroot) از همین برنامه سرو می‌شوند: یک سایت در IIS.
+var serveWeb = File.Exists(Path.Combine(app.Environment.WebRootPath ?? "", "index.html"));
+if (serveWeb)
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+}
 
 if (app.Environment.IsDevelopment())
     app.MapOpenApi();
@@ -78,7 +101,14 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health");
 
-// مهاجرت دیتابیس و داده‌های اولیه (نمونه‌ها فقط در Development).
+if (serveWeb)
+{
+    // آدرس ناشناخته زیر /api خطای ۴۰۴ بماند؛ بقیه مسیرهای SPA به index.html.
+    app.Map("/api/{**rest}", () => Results.NotFound());
+    app.MapFallbackToFile("index.html");
+}
+
+// مهاجرت دیتابیس و داده‌های اولیه (اطلاعات پایه واقعی از SeedData).
 if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
 {
     using var scope = app.Services.CreateScope();
