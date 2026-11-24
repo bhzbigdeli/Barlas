@@ -1,16 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import QrScanner from "qr-scanner";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { api, post } from "../api/client";
 import { orderStatusLabels, type FreeStockRow, type ReceiveResult } from "../api/types";
 import { ErrorText } from "../components/Field";
+import { QrCamera } from "../components/QrCamera";
 import { formatNumber } from "../lib/format";
 
 /** ورود دسته تمام‌شده به انبار با اسکن کاردکس؛ اول سهم سفارش پر می‌شود و بقیه به موجودی آزاد می‌رود. */
 export function WarehousePage() {
   const qc = useQueryClient();
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [scanning, setScanning] = useState(false);
   const [qr, setQr] = useState("");
   const stock = useQuery({ queryKey: ["free-stock"], queryFn: () => api<FreeStockRow[]>("/warehouse/free-stock") });
 
@@ -24,20 +22,6 @@ export function WarehousePage() {
     },
   });
 
-  useEffect(() => {
-    if (!scanning || !videoRef.current) return;
-    const scanner = new QrScanner(
-      videoRef.current,
-      (result) => {
-        setScanning(false);
-        receive.mutate(result.data);
-      },
-      { preferredCamera: "environment", highlightScanRegion: true },
-    );
-    scanner.start().catch(() => setScanning(false));
-    return () => scanner.destroy();
-  }, [scanning]);
-
   function submit(e: FormEvent) {
     e.preventDefault();
     receive.mutate(qr);
@@ -49,16 +33,7 @@ export function WarehousePage() {
       <h2>انبار محصول</h2>
 
       <div className="scan">
-        {scanning ? (
-          <div className="video-box">
-            <video ref={videoRef} muted playsInline />
-            <button className="secondary" onClick={() => setScanning(false)}>
-              بستن دوربین
-            </button>
-          </div>
-        ) : (
-          <button onClick={() => setScanning(true)}>اسکن کاردکس با دوربین</button>
-        )}
+        <QrCamera onResult={(token) => receive.mutate(token)} />
 
         <form className="card" onSubmit={submit}>
           <label>

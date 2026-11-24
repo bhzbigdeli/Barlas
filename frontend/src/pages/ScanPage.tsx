@@ -1,19 +1,17 @@
 import { useMutation } from "@tanstack/react-query";
-import QrScanner from "qr-scanner";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { api, post } from "../api/client";
 import type { BundleState } from "../api/types";
+import { QrCamera } from "../components/QrCamera";
 import { formatNumber, toLatinDigits } from "../lib/format";
 
 const WORKER_KEY = "barlas.lastWorker";
 
 /**
  * اسکن کاردکس با گوشی: QR دسته را می‌خواند، کد پرسنلی کارگر را می‌گیرد و پایان مرحله بعدی را ثبت می‌کند.
- * دوربین فقط روی HTTPS یا localhost کار می‌کند؛ ورود دستی کد همیشه در دسترس است.
+ * دوربین زنده فقط روی HTTPS کار می‌کند؛ عکس گرفتن از کاردکس و ورود دستی کد همیشه در دسترس است.
  */
 export function ScanPage() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [scanning, setScanning] = useState(false);
   const [qr, setQr] = useState("");
   const [worker, setWorker] = useState(() => {
     try {
@@ -28,21 +26,11 @@ export function ScanPage() {
     mutationFn: () => post<BundleState>("/scan/complete", { qrToken: qr, workerCode: toLatinDigits(worker) }),
   });
 
-  useEffect(() => {
-    if (!scanning || !videoRef.current) return;
-    const scanner = new QrScanner(
-      videoRef.current,
-      (result) => {
-        setScanning(false);
-        setQr(result.data);
-        complete.reset();
-        lookup.mutate(result.data);
-      },
-      { preferredCamera: "environment", highlightScanRegion: true },
-    );
-    scanner.start().catch(() => setScanning(false));
-    return () => scanner.destroy();
-  }, [scanning]);
+  function scanned(token: string) {
+    setQr(token);
+    complete.reset();
+    lookup.mutate(token);
+  }
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -61,16 +49,7 @@ export function ScanPage() {
     <section className="scan">
       <h2>اسکن کاردکس</h2>
 
-      {scanning ? (
-        <div className="video-box">
-          <video ref={videoRef} muted playsInline />
-          <button className="secondary" onClick={() => setScanning(false)}>
-            بستن دوربین
-          </button>
-        </div>
-      ) : (
-        <button onClick={() => setScanning(true)}>باز کردن دوربین</button>
-      )}
+      <QrCamera onResult={scanned} />
 
       <form className="card" onSubmit={submit}>
         <label>
